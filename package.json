@@ -5,9 +5,7 @@
   },
   "name": "cg-project",
   "version": "1.0.0",
-  "description": "",
   "main": "main.js",
-  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -21,5 +19,7 @@
   "bugs": {
     "url": "https://github.com/diellzad2003/CG-Project/issues"
   },
-  "homepage": "https://github.com/diellzad2003/CG-Project#readme"
+  "homepage": "https://github.com/diellzad2003/CG-Project#readme",
+  "devDependencies": {},
+  "description": ""
 }
