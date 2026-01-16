@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-/* Scene */
+
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xf2f2f2);
 
-/* Camera */
+
 const camera = new THREE.PerspectiveCamera(
   60,
   window.innerWidth / window.innerHeight,
@@ -14,49 +14,80 @@ const camera = new THREE.PerspectiveCamera(
 );
 camera.position.set(0, 6, 18);
 
-/* Renderer */
+
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
+
+
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.25;
+
 document.body.appendChild(renderer.domElement);
 
-/* Controls */
+
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.target.set(0, 4, 0);
 
-/* Lights */
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.35);
+
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
 scene.add(ambientLight);
+
+
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0xcccccc, 0.9);
+scene.add(hemiLight);
+
 
 const mainLight = new THREE.DirectionalLight(0xffffff, 0.9);
 mainLight.position.set(10, 15, 10);
 mainLight.castShadow = true;
 scene.add(mainLight);
 
-/* =====================
-   DIMENSIONS
-===================== */
+
 const floorSize = 50;
 const wallHeight = 10;
 const wallDepth = 30;
 const wallWidth = 40;
 
-/* =====================
-   MATERIALS
-===================== */
-const floorMaterial = new THREE.MeshStandardMaterial({
-  color: 0xf5f5f5
+
+const textureLoader = new THREE.TextureLoader();
+const tileRepeat = 6;
+
+
+const colorMap = textureLoader.load('/textures/floor/Leather004_2K-JPG_Color.jpg');
+colorMap.colorSpace = THREE.SRGBColorSpace;
+
+const normalMap = textureLoader.load('/textures/floor/Leather004_2K-JPG_NormalDX.jpg');
+
+
+[colorMap, normalMap].forEach((t) => {
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(tileRepeat, tileRepeat);
 });
+
+
+normalMap.flipY = true;
+
+const floorMaterial = new THREE.MeshStandardMaterial({
+  map: colorMap,
+  normalMap: normalMap,
+  roughness: 0.9,
+  metalness: 0.0,
+  color: new THREE.Color(0xffffff)
+});
+
+
+floorMaterial.color.multiplyScalar(1.2);
+
 
 const wallMaterial = new THREE.MeshStandardMaterial({
   color: 0xffffff,
   side: THREE.DoubleSide
 });
 
-/* =====================
-   FLOOR
-===================== */
+
 const floor = new THREE.Mesh(
   new THREE.PlaneGeometry(floorSize, floorSize),
   floorMaterial
@@ -65,9 +96,7 @@ floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
 scene.add(floor);
 
-/* =====================
-   BACK WALL (TALL)
-===================== */
+
 const backWall = new THREE.Mesh(
   new THREE.PlaneGeometry(wallWidth, wallHeight),
   wallMaterial
@@ -76,9 +105,7 @@ backWall.position.set(0, wallHeight / 2, -wallDepth / 2);
 backWall.receiveShadow = true;
 scene.add(backWall);
 
-/* =====================
-   LEFT WALL (TALL)
-===================== */
+
 const leftWall = new THREE.Mesh(
   new THREE.PlaneGeometry(wallDepth, wallHeight),
   wallMaterial
@@ -88,9 +115,7 @@ leftWall.rotation.y = Math.PI / 2;
 leftWall.receiveShadow = true;
 scene.add(leftWall);
 
-/* =====================
-   RIGHT WALL (TALL)
-===================== */
+
 const rightWall = new THREE.Mesh(
   new THREE.PlaneGeometry(wallDepth, wallHeight),
   wallMaterial
@@ -100,9 +125,7 @@ rightWall.rotation.y = -Math.PI / 2;
 rightWall.receiveShadow = true;
 scene.add(rightWall);
 
-/* =====================
-   CEILING (TALL)
-===================== */
+
 const ceiling = new THREE.Mesh(
   new THREE.PlaneGeometry(wallWidth, wallDepth),
   wallMaterial
@@ -112,14 +135,14 @@ ceiling.rotation.x = Math.PI / 2;
 ceiling.receiveShadow = true;
 scene.add(ceiling);
 
-/* Resize */
+
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-/* Animate */
+
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
