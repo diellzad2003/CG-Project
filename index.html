@@ -1,13 +1,110 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Literatura.mk – Interior</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Literatura.mk Bookstore</title>
   <style>
-    body { margin: 0; overflow: hidden; }
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    
+    #loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #fff;
+      font-size: 24px;
+      z-index: 100;
+    }
+    
+    #controls {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 15px;
+      border-radius: 8px;
+      color: #fff;
+      max-width: 280px;
+      border: 1px solid #ff4444;
+      z-index: 10;
+    }
+    
+    #controls h3 {
+      margin: 0 0 10px 0;
+      color: #ff4444;
+    }
+    
+    #controls p {
+      margin: 5px 0;
+      font-size: 14px;
+    }
+    
+    #bookDetails {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(20, 20, 20, 0.95);
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(255, 68, 68, 0.3);
+      border: 2px solid #ff4444;
+      color: #fff;
+      min-width: 300px;
+      z-index: 20;
+    }
+    
+    #bookDetails h2 {
+      margin: 0 0 15px 0;
+      color: #ff4444;
+    }
+    
+    #bookDetails p {
+      margin: 10px 0;
+    }
+    
+    #bookDetails button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #ff4444;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    #bookDetails button:hover {
+      background: #ff6666;
+    }
   </style>
 </head>
 <body>
+  <div id="loading">Loading Literatura.mk...</div>
+  
+        <div id="controls">
+    <h3>Controls</h3>
+    <p>Left Mouse - Rotate view</p>
+    <p>Right Mouse - Pan</p>
+    <p>Scroll - Zoom in/out</p>
+    <p>Click books for details</p>
+  </div>
+  
+  <div id="bookDetails">
+    <h2>Book Details</h2>
+    <p><strong>Title:</strong> <span id="bookTitle"></span></p>
+    <p><strong>Author:</strong> <span id="bookAuthor"></span></p>
+    <p><strong>Price:</strong> <span id="bookPrice"></span></p>
+    <button onclick="closeBookDetails()">Close</button>
+  </div>
+
   <script type="module" src="main.js"></script>
 </body>
 </html>
