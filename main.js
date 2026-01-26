@@ -1,5 +1,6 @@
- import * as THREE from 'three';
+import * as THREE from 'three';
     import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
     // Scene setup
     const scene = new THREE.Scene();
@@ -25,7 +26,7 @@
     renderer.toneMappingExposure = 1.3;
     document.body.appendChild(renderer.domElement);
 
-    // Lighting 
+    // Lighting - brighter overall
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
 
@@ -98,24 +99,25 @@
     ceiling.rotation.x = Math.PI / 2;
     scene.add(ceiling);
 
-    // Ceiling installation 
+    // Ceiling installation - lines across the entire ceiling
     function createCeilingInstallation() {
       const group = new THREE.Group();
       const woodMaterial = new THREE.MeshStandardMaterial({
-        color: 0x8b6f47, 
+        color: 0x8b6f47, // Darker wood tone
         roughness: 0.7,
         metalness: 0.1
       });
 
       // Create wooden slats in parallel lines across the ceiling
-      const numLines = 50; 
-      const spacing = 1.0;
-      const coverageWidth = 50; 
+      const numLines = 50; // Reduced number of lines to avoid shader errors
+      const spacing = 1.0; // Spacing between slats
+      const coverageWidth = 50; // Cover the full width
       
       for (let i = 0; i < numLines; i++) {
-        const length = 0.8 + Math.random() * 2.0; 
+        const length = 0.8 + Math.random() * 2.0; // Varying lengths for visual interest
         const xPos = -coverageWidth / 2 + (i * spacing);
         
+        // Create slats along the Z axis (running front to back)
         const slat = new THREE.Mesh(
           new THREE.BoxGeometry(0.25, length, 0.25),
           woodMaterial
@@ -127,6 +129,7 @@
         group.add(slat);
       }
       
+      // Add some variation - offset rows (reduced)
       for (let i = 0; i < 25; i++) {
         const length = 0.9 + Math.random() * 1.8;
         const xPos = -coverageWidth / 2 + (i * spacing * 2);
@@ -142,7 +145,7 @@
         
         group.add(slat);
         
-      
+        // Mirror on the other side
         const slat2 = new THREE.Mesh(
           new THREE.BoxGeometry(0.25, length, 0.25),
           woodMaterial
@@ -154,6 +157,7 @@
         group.add(slat2);
       }
       
+      // Add lights coming through the ceiling slats (reduced to 6)
       for (let i = 0; i < 6; i++) {
         const xPos = -20 + (i * 8);
         const zPos = -10 + Math.random() * 20;
@@ -172,8 +176,190 @@
     
     scene.add(createCeilingInstallation());
 
-   
-    function createModernBookshelf(x, z, rotation = 0) {
+    // GLTFLoader for loading 3D models
+    const gltfLoader = new GLTFLoader();
+
+    // Load shelf textures (reusing textureLoader from above)
+    const shelfTextures = {
+      albedo: textureLoader.load('/models/shelves/shelves_model/texture/SchoolBagShelves_Albedo.png'),
+      roughness: textureLoader.load('/models/shelves/shelves_model/texture/SchoolBagShelves_Roughness.png'),
+      metalness: textureLoader.load('/models/shelves/shelves_model/texture/SchoolBagShelves_Metallic.png'),
+      ao: textureLoader.load('/models/shelves/shelves_model/texture/SchoolBagShelves_AO.png'),
+      normal: textureLoader.load('/models/shelves/shelves_model/texture/SchoolBagShelves_normals(opengl).png')
+    };
+
+    // Set correct color space for albedo
+    shelfTextures.albedo.encoding = THREE.sRGBEncoding;
+
+    // Function to create GLB bookshelf with textures
+    function createGLBBookshelf(x, z, rotation = 0) {
+      const shelfGroup = new THREE.Group();
+      
+      // Load the shelf GLB model
+      gltfLoader.load(
+        '/models/shelves/shelves_model/SchoolBagShelves.glb',
+        (gltf) => {
+          const shelf = gltf.scene;
+          
+          // Apply textures to all meshes in the shelf
+          shelf.traverse((child) => {
+            if (child.isMesh) {
+              // Create material with all texture maps
+              child.material = new THREE.MeshStandardMaterial({
+                map: shelfTextures.albedo,
+                roughnessMap: shelfTextures.roughness,
+                metalnessMap: shelfTextures.metalness,
+                aoMap: shelfTextures.ao,
+                normalMap: shelfTextures.normal,
+                roughness: 1.0,
+                metalness: 1.0
+              });
+              
+              // Enable shadows
+              child.castShadow = true;
+              child.receiveShadow = true;
+              
+              // If mesh has UV2 for AO map
+              if (child.geometry.attributes.uv) {
+                child.geometry.setAttribute('uv2', child.geometry.attributes.uv);
+              }
+            }
+          });
+          
+          // Add the shelf to the group
+          shelfGroup.add(shelf);
+          
+          // Now load books as children of this shelf
+          loadBooksForShelf(shelfGroup, shelf);
+        },
+        (progress) => {
+          console.log('Loading shelf: ' + (progress.loaded / progress.total * 100) + '%');
+        },
+        (error) => {
+          console.error('Error loading shelf:', error);
+          // Fallback to procedural shelf if GLB fails
+          const fallbackShelf = createProceduralBookshelf(0, 0, 0);
+          shelfGroup.add(fallbackShelf);
+        }
+      );
+      
+      shelfGroup.position.set(x, 0, z);
+      shelfGroup.rotation.y = rotation;
+      
+      return shelfGroup;
+    }
+
+    // Function to load GLB books and attach them to shelf (parent-child relationship)
+    function loadBooksForShelf(shelfGroup, shelfModel) {
+      const bookPositions = [
+        // Shelf 1 (bottom)
+        { x: -1.5, y: 0.5, z: 0 },
+        { x: -1.0, y: 0.5, z: 0 },
+        { x: -0.5, y: 0.5, z: 0 },
+        { x: 0.0, y: 0.5, z: 0 },
+        { x: 0.5, y: 0.5, z: 0 },
+        { x: 1.0, y: 0.5, z: 0 },
+        { x: 1.5, y: 0.5, z: 0 },
+        // Shelf 2
+        { x: -1.5, y: 1.5, z: 0 },
+        { x: -1.0, y: 1.5, z: 0 },
+        { x: -0.5, y: 1.5, z: 0 },
+        { x: 0.0, y: 1.5, z: 0 },
+        { x: 0.5, y: 1.5, z: 0 },
+        { x: 1.0, y: 1.5, z: 0 },
+        { x: 1.5, y: 1.5, z: 0 },
+        // Shelf 3
+        { x: -1.5, y: 2.5, z: 0 },
+        { x: -1.0, y: 2.5, z: 0 },
+        { x: -0.5, y: 2.5, z: 0 },
+        { x: 0.0, y: 2.5, z: 0 },
+        { x: 0.5, y: 2.5, z: 0 },
+        { x: 1.0, y: 2.5, z: 0 },
+      ];
+
+      bookPositions.forEach((pos, index) => {
+        gltfLoader.load(
+          '/models/books/book.glb', // Path to your book GLB
+          (gltf) => {
+            const book = gltf.scene;
+            
+            // Set book position relative to shelf
+            book.position.set(pos.x, pos.y, pos.z);
+            
+            // Random rotation for variety
+            book.rotation.y = (Math.random() - 0.5) * 0.1;
+            
+            // Random scale for variety
+            const scale = 0.8 + Math.random() * 0.4;
+            book.scale.set(scale, scale, scale);
+            
+            // Enable shadows
+            book.traverse((child) => {
+              if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+                
+                // Add click interaction data
+                child.userData = {
+                  title: `Book ${Math.floor(Math.random() * 1000)}`,
+                  author: ['Macedonian Author', 'International Writer', 'Classic Author'][Math.floor(Math.random() * 3)],
+                  price: `${(299 + Math.random() * 500).toFixed(0)} MKD`,
+                  clickable: true
+                };
+              }
+            });
+            
+            // IMPORTANT: Add book as child of shelf (parent-child relationship)
+            shelfModel.add(book);
+          },
+          undefined,
+          (error) => {
+            console.error('Error loading book:', error);
+            // Fallback to procedural book if GLB fails
+            const fallbackBook = createProceduralBook(pos);
+            shelfModel.add(fallbackBook);
+          }
+        );
+      });
+    }
+
+    // Fallback procedural book (if GLB doesn't load)
+    function createProceduralBook(pos) {
+      const bookColors = [
+        0xff4444, 0x4444ff, 0x44ff44, 0xffaa00, 0xff00ff,
+        0x00ffff, 0xff8800, 0x8800ff, 0x00ff88, 0xffff00
+      ];
+      
+      const bookWidth = 0.12 + Math.random() * 0.1;
+      const bookHeight = 0.5 + Math.random() * 0.2;
+      const bookDepth = 0.6;
+      
+      const bookMaterial = new THREE.MeshStandardMaterial({
+        color: bookColors[Math.floor(Math.random() * bookColors.length)],
+        roughness: 0.5,
+        metalness: 0.1
+      });
+      
+      const book = new THREE.Mesh(
+        new THREE.BoxGeometry(bookWidth, bookHeight, bookDepth),
+        bookMaterial
+      );
+      
+      book.position.set(pos.x, pos.y, pos.z);
+      book.rotation.y = (Math.random() - 0.5) * 0.08;
+      book.castShadow = true;
+      book.userData = {
+        title: `Book ${Math.floor(Math.random() * 1000)}`,
+        author: ['Macedonian Author', 'International Writer', 'Classic Author'][Math.floor(Math.random() * 3)],
+        price: `${(299 + Math.random() * 500).toFixed(0)} MKD`,
+        clickable: true
+      };
+      
+      return book;
+    }
+
+    // Fallback procedural bookshelf
+    function createProceduralBookshelf(x, z, rotation) {
       const shelfGroup = new THREE.Group();
       
       const frameMaterial = new THREE.MeshStandardMaterial({
@@ -183,71 +369,34 @@
       });
       
       const backing = new THREE.Mesh(
-        new THREE.BoxGeometry(4, 5, 0.2),
+        new THREE.BoxGeometry(4, 4, 0.2),
         frameMaterial
       );
-      backing.position.set(0, 2.5, -0.3);
+      backing.position.set(0, 2, -0.3);
       backing.castShadow = true;
       backing.receiveShadow = true;
       shelfGroup.add(backing);
-
-      const bookColors = [
-        0xff4444, 0x4444ff, 0x44ff44, 0xffaa00, 0xff00ff,
-        0x00ffff, 0xff8800, 0x8800ff, 0x00ff88, 0xffff00
-      ];
 
       for (let i = 0; i < 4; i++) {
         const shelf = new THREE.Mesh(
           new THREE.BoxGeometry(4, 0.05, 0.8),
           frameMaterial
         );
-        shelf.position.set(0, 0.8 + i * 1.2, 0);
+        shelf.position.set(0, 0.5 + i * 1.0, 0);
         shelf.castShadow = true;
         shelf.receiveShadow = true;
         shelfGroup.add(shelf);
-
-        const booksOnShelf = new THREE.Group();
-        for (let j = 0; j < 10; j++) {
-          const bookWidth = 0.12 + Math.random() * 0.1;
-          const bookHeight = 0.7 + Math.random() * 0.3;
-          const bookDepth = 0.6;
-          
-          const bookMaterial = new THREE.MeshStandardMaterial({
-            color: bookColors[Math.floor(Math.random() * bookColors.length)],
-            roughness: 0.5,
-            metalness: 0.1
-          });
-          
-          const book = new THREE.Mesh(
-            new THREE.BoxGeometry(bookWidth, bookHeight, bookDepth),
-            bookMaterial
-          );
-          
-          book.position.set(-1.9 + j * 0.4, bookHeight / 2 + 0.05, 0);
-          book.rotation.y = (Math.random() - 0.5) * 0.08;
-          book.castShadow = true;
-          book.userData = {
-            title: `Book ${Math.floor(Math.random() * 1000)}`,
-            author: ['Macedonian Author', 'International Writer', 'Classic Author'][Math.floor(Math.random() * 3)],
-            price: `${(299 + Math.random() * 500).toFixed(0)} MKD`,
-            clickable: true
-          };
-          
-          booksOnShelf.add(book);
-        }
-        
-        booksOnShelf.position.copy(shelf.position);
-        shelf.add(booksOnShelf);
       }
 
-      shelfGroup.position.set(x, 0, z);
-      shelfGroup.rotation.y = rotation;
       return shelfGroup;
     }
 
-    scene.add(createModernBookshelf(-15, -8, Math.PI / 2));
-    scene.add(createModernBookshelf(-15, 0, Math.PI / 2));
-    scene.add(createModernBookshelf(-15, 8, Math.PI / 2));
+
+
+    // Add GLB bookshelves (these will load the models)
+    scene.add(createGLBBookshelf(-15, -8, Math.PI / 2));
+    scene.add(createGLBBookshelf(-15, 0, Math.PI / 2));
+    scene.add(createGLBBookshelf(-15, 8, Math.PI / 2));
 
     // Café counter
     function createCafeCounter() {
@@ -423,7 +572,7 @@
 
     scene.add(createSeatingArea());
 
-   
+    // Neon sign - positioned behind the bar
     function createNeonSign() {
       const neonGroup = new THREE.Group();
       
@@ -444,14 +593,14 @@
       glowLight.position.set(0, 0, 0.5);
       neonGroup.add(glowLight);
 
-     
+      // Position behind the bar (bar is at 0,0,0, so put sign behind it)
       neonGroup.position.set(0, 3, -1.5);
       return neonGroup;
     }
 
     scene.add(createNeonSign());
 
-  
+    // Glass display case
     function createDisplayCase(x, z) {
       const caseGroup = new THREE.Group();
       
@@ -499,12 +648,13 @@
 
     scene.add(createDisplayCase(15, 8));
 
+    // OrbitControls for smooth camera control
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.minDistance = 3;
     controls.maxDistance = 30;
-    controls.maxPolarAngle = Math.PI / 2; 
+    controls.maxPolarAngle = Math.PI / 2; // Prevent going below ground
     controls.target.set(0, 2, 0);
     controls.update();
 
