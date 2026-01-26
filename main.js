@@ -2,50 +2,47 @@ import * as THREE from 'three';
     import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
     import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-    // Scene setup
+    /* ---------------- SCENE ---------------- */
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1a1a1a);
     scene.fog = new THREE.Fog(0x1a1a1a, 25, 60);
 
-    // Camera
-    const camera = new THREE.PerspectiveCamera(
-      70,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      200
-    );
+    /* ---------------- CAMERA ---------------- */
+    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 200);
     camera.position.set(0, 3, 12);
 
-    // Renderer
+    /* ---------------- RENDERER ---------------- */
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
+    renderer.shadowMap.autoUpdate = true;
+
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.3;
     document.body.appendChild(renderer.domElement);
 
-    // Lighting - brighter overall
+    /* ---------------- LIGHTING ---------------- */
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
 
     const ceilingLight = new THREE.PointLight(0xffcc88, 2.5, 25);
     ceilingLight.position.set(0, 8, 0);
-    ceilingLight.castShadow = true;
+    ceilingLight.castShadow = false;
     scene.add(ceilingLight);
 
     const spotlight1 = new THREE.SpotLight(0xffffff, 3, 30, Math.PI / 6, 0.3);
     spotlight1.position.set(-8, 8, -5);
     spotlight1.target.position.set(-8, 0, -5);
-    spotlight1.castShadow = true;
+    spotlight1.castShadow = false;
     scene.add(spotlight1);
     scene.add(spotlight1.target);
 
     const spotlight2 = new THREE.SpotLight(0xffffff, 3, 30, Math.PI / 6, 0.3);
     spotlight2.position.set(8, 8, -5);
     spotlight2.target.position.set(8, 0, -5);
-    spotlight2.castShadow = true;
+    spotlight2.castShadow = false;
     scene.add(spotlight2);
     scene.add(spotlight2.target);
 
@@ -54,82 +51,122 @@ import * as THREE from 'three';
     cafeLight.castShadow = true;
     scene.add(cafeLight);
 
-    // Floor with texture
-    const textureLoader = new THREE.TextureLoader();
+    /* ---------------- FLOOR ---------------- */
+    const texLoader = new THREE.TextureLoader();
     const tileRepeat = 6;
     
-    const colorMap = textureLoader.load('/textures/floor/Leather004_2K-JPG_Color.jpg');
-    colorMap.encoding = THREE.sRGBEncoding;
+    const floorColor = texLoader.load('/textures/floor/Leather004_2K-JPG_Color.jpg');
+    floorColor.encoding = THREE.sRGBEncoding;
     
-    const normalMap = textureLoader.load('/textures/floor/Leather004_2K-JPG_NormalDX.jpg');
+    const floorNormal = texLoader.load('/textures/floor/Leather004_2K-JPG_NormalGL.jpg');
     
-    [colorMap, normalMap].forEach((t) => {
+    [floorColor, floorNormal].forEach((t) => {
       t.wrapS = t.wrapT = THREE.RepeatWrapping;
       t.repeat.set(tileRepeat, tileRepeat);
     });
     
-    normalMap.flipY = true;
     
-    const floorGeometry = new THREE.PlaneGeometry(50, 50);
-    const floorMaterial = new THREE.MeshStandardMaterial({
-      map: colorMap,
-      normalMap: normalMap,
-      roughness: 0.9,
-      metalness: 0.0,
-      color: new THREE.Color(0xffffff)
-    });
-    
-    floorMaterial.color.multiplyScalar(1.2);
-    
-    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(30, 20),
+      new THREE.MeshStandardMaterial({
+        map: floorColor,
+        normalMap: floorNormal,
+        roughness: 0.9,
+        metalness: 0,
+        color: new THREE.Color(0xffffff)
+      })
+    );
+    floor.position.set(0,0,6);
+    floor.material.color.multiplyScalar(1.2);
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
     scene.add(floor);
+/* ---------------- BACK WALL ---------------- */
+const backWall = new THREE.Mesh(
+  new THREE.PlaneGeometry(30, 10), // width, height
+  new THREE.MeshStandardMaterial({
+    color: 0xd9b99b,
+    roughness: 0.8
+  })
+);
 
-    // Ceiling
+backWall.position.set(0, 5, -4); // ← RIGHT BEHIND BAR
+backWall.receiveShadow = true;
+scene.add(backWall);
+/* ---------------- LEFT WALL ---------------- */
+const leftWall = new THREE.Mesh(
+  new THREE.PlaneGeometry(20, 10), // width, height
+  new THREE.MeshStandardMaterial({
+    color: 0xd9b99b,
+    roughness: 0.8
+  })
+);
+
+leftWall.position.set(-15, 5, 6); // left side
+leftWall.rotation.y = Math.PI / 2; // rotate to face inward
+leftWall.receiveShadow = true;
+scene.add(leftWall);
+/* ---------------- RIGHT WALL ---------------- */
+const rightWallTexture = texLoader.load('/textures/wall/ClassWallTexture.jpg'); // your class wall texture
+rightWallTexture.wrapS = rightWallTexture.wrapT = THREE.RepeatWrapping;
+rightWallTexture.repeat.set(3, 2);
+
+const rightWall = new THREE.Mesh(
+  new THREE.PlaneGeometry(20, 10),
+  new THREE.MeshStandardMaterial({
+    map: rightWallTexture,
+    roughness: 0.8
+  })
+);
+
+rightWall.position.set(15, 5, 6); // right side
+rightWall.rotation.y = -Math.PI / 2; // rotate to face inward
+rightWall.receiveShadow = true;
+scene.add(rightWall);
+
+
+    /* ---------------- CEILING ---------------- */
     const ceiling = new THREE.Mesh(
-      new THREE.PlaneGeometry(50, 50),
+      new THREE.PlaneGeometry(30, 20),
       new THREE.MeshStandardMaterial({ 
         color: 0x0a0a0a,
         roughness: 0.9,
         side: THREE.DoubleSide
       })
     );
-    ceiling.position.y = 10;
+    ceiling.position.set(0,10,6);
     ceiling.rotation.x = Math.PI / 2;
     scene.add(ceiling);
 
-    // Ceiling installation - lines across the entire ceiling
+    /* ---------------- CEILING INSTALLATION ---------------- */
     function createCeilingInstallation() {
       const group = new THREE.Group();
       const woodMaterial = new THREE.MeshStandardMaterial({
-        color: 0x8b6f47, // Darker wood tone
+        color: 0x8b6f47,
         roughness: 0.7,
         metalness: 0.1
       });
 
-      // Create wooden slats in parallel lines across the ceiling
-      const numLines = 50; // Reduced number of lines to avoid shader errors
-      const spacing = 1.0; // Spacing between slats
-      const coverageWidth = 50; // Cover the full width
+      const numLines = 50;
+      const spacing = 1.0;
+      const coverageWidth = 50;
       
       for (let i = 0; i < numLines; i++) {
-        const length = 0.8 + Math.random() * 2.0; // Varying lengths for visual interest
+        const length = 0.8 + Math.random() * 2.0;
         const xPos = -coverageWidth / 2 + (i * spacing);
         
-        // Create slats along the Z axis (running front to back)
         const slat = new THREE.Mesh(
           new THREE.BoxGeometry(0.25, length, 0.25),
           woodMaterial
         );
         
-        slat.position.set(xPos, 10 - length / 2, 0); // Higher position
+        slat.position.set(xPos, 10 - length / 2, 0);
         slat.castShadow = true;
         
         group.add(slat);
       }
       
-      // Add some variation - offset rows (reduced)
       for (let i = 0; i < 25; i++) {
         const length = 0.9 + Math.random() * 1.8;
         const xPos = -coverageWidth / 2 + (i * spacing * 2);
@@ -145,7 +182,6 @@ import * as THREE from 'three';
         
         group.add(slat);
         
-        // Mirror on the other side
         const slat2 = new THREE.Mesh(
           new THREE.BoxGeometry(0.25, length, 0.25),
           woodMaterial
@@ -157,7 +193,6 @@ import * as THREE from 'three';
         group.add(slat2);
       }
       
-      // Add lights coming through the ceiling slats (reduced to 6)
       for (let i = 0; i < 6; i++) {
         const xPos = -20 + (i * 8);
         const zPos = -10 + Math.random() * 20;
@@ -176,229 +211,67 @@ import * as THREE from 'three';
     
     scene.add(createCeilingInstallation());
 
-    // GLTFLoader for loading 3D models
+    /* ---------------- SHELF TEXTURES ---------------- */
+  const shelfTextures = {
+  albedo: texLoader.load('/models/shelves/shelves_model/texture/SchoolBagShelves_Albedo.png'),
+  roughness: texLoader.load('/models/shelves/shelves_model/texture/SchoolBagShelves_Roughness.png'),
+  normal: texLoader.load('/models/shelves/shelves_model/texture/SchoolBagShelves_normals(opengl).png')
+};
+
+shelfTextures.albedo.colorSpace = THREE.SRGBColorSpace;
+
+
+    /* ---------------- GLB LOADER ---------------- */
     const gltfLoader = new GLTFLoader();
 
-    // Load shelf textures (reusing textureLoader from above)
-    const shelfTextures = {
-      albedo: textureLoader.load('/models/shelves/shelves_model/texture/SchoolBagShelves_Albedo.png'),
-      roughness: textureLoader.load('/models/shelves/shelves_model/texture/SchoolBagShelves_Roughness.png'),
-      metalness: textureLoader.load('/models/shelves/shelves_model/texture/SchoolBagShelves_Metallic.png'),
-      ao: textureLoader.load('/models/shelves/shelves_model/texture/SchoolBagShelves_AO.png'),
-      normal: textureLoader.load('/models/shelves/shelves_model/texture/SchoolBagShelves_normals(opengl).png')
-    };
+function createGLBBookshelf(x, z, rotation = 0) {
+  const group = new THREE.Group();
 
-    // Set correct color space for albedo
-    shelfTextures.albedo.encoding = THREE.sRGBEncoding;
+  gltfLoader.load(
+    '/models/shelves/shelves_model/SchoolBagShelves.glb',
+    (gltf) => {
+      const shelf = gltf.scene;
 
-    // Function to create GLB bookshelf with textures
-    function createGLBBookshelf(x, z, rotation = 0) {
-      const shelfGroup = new THREE.Group();
-      
-      // Load the shelf GLB model
-      gltfLoader.load(
-        '/models/shelves/shelves_model/SchoolBagShelves.glb',
-        (gltf) => {
-          const shelf = gltf.scene;
-          
-          // Apply textures to all meshes in the shelf
-          shelf.traverse((child) => {
-            if (child.isMesh) {
-              // Create material with all texture maps
-              child.material = new THREE.MeshStandardMaterial({
-                map: shelfTextures.albedo,
-                roughnessMap: shelfTextures.roughness,
-                metalnessMap: shelfTextures.metalness,
-                aoMap: shelfTextures.ao,
-                normalMap: shelfTextures.normal,
-                roughness: 1.0,
-                metalness: 1.0
-              });
-              
-              // Enable shadows
-              child.castShadow = true;
-              child.receiveShadow = true;
-              
-              // If mesh has UV2 for AO map
-              if (child.geometry.attributes.uv) {
-                child.geometry.setAttribute('uv2', child.geometry.attributes.uv);
-              }
-            }
-          });
-          
-          // Add the shelf to the group
-          shelfGroup.add(shelf);
-          
-          // Now load books as children of this shelf
-          loadBooksForShelf(shelfGroup, shelf);
-        },
-        (progress) => {
-          console.log('Loading shelf: ' + (progress.loaded / progress.total * 100) + '%');
-        },
-        (error) => {
-          console.error('Error loading shelf:', error);
-          // Fallback to procedural shelf if GLB fails
-          const fallbackShelf = createProceduralBookshelf(0, 0, 0);
-          shelfGroup.add(fallbackShelf);
-        }
-      );
-      
-      shelfGroup.position.set(x, 0, z);
-      shelfGroup.rotation.y = rotation;
-      
-      return shelfGroup;
-    }
+    shelf.traverse((child) => {
+  if (child.isMesh) {
 
-    // Function to load GLB books and attach them to shelf (parent-child relationship)
-    function loadBooksForShelf(shelfGroup, shelfModel) {
-      const bookPositions = [
-        // Shelf 1 (bottom)
-        { x: -1.5, y: 0.5, z: 0 },
-        { x: -1.0, y: 0.5, z: 0 },
-        { x: -0.5, y: 0.5, z: 0 },
-        { x: 0.0, y: 0.5, z: 0 },
-        { x: 0.5, y: 0.5, z: 0 },
-        { x: 1.0, y: 0.5, z: 0 },
-        { x: 1.5, y: 0.5, z: 0 },
-        // Shelf 2
-        { x: -1.5, y: 1.5, z: 0 },
-        { x: -1.0, y: 1.5, z: 0 },
-        { x: -0.5, y: 1.5, z: 0 },
-        { x: 0.0, y: 1.5, z: 0 },
-        { x: 0.5, y: 1.5, z: 0 },
-        { x: 1.0, y: 1.5, z: 0 },
-        { x: 1.5, y: 1.5, z: 0 },
-        // Shelf 3
-        { x: -1.5, y: 2.5, z: 0 },
-        { x: -1.0, y: 2.5, z: 0 },
-        { x: -0.5, y: 2.5, z: 0 },
-        { x: 0.0, y: 2.5, z: 0 },
-        { x: 0.5, y: 2.5, z: 0 },
-        { x: 1.0, y: 2.5, z: 0 },
-      ];
+    const mat = new THREE.MeshStandardMaterial({
+      map: shelfTextures.albedo,
+      normalMap: shelfTextures.normal,
+      roughnessMap: shelfTextures.roughness,
+      roughness: 1.0,
+      metalness: 0.0,
+      color: new THREE.Color(0xd9b99b) 
+    });
 
-      bookPositions.forEach((pos, index) => {
-        gltfLoader.load(
-          '/models/books/book.glb', // Path to your book GLB
-          (gltf) => {
-            const book = gltf.scene;
-            
-            // Set book position relative to shelf
-            book.position.set(pos.x, pos.y, pos.z);
-            
-            // Random rotation for variety
-            book.rotation.y = (Math.random() - 0.5) * 0.1;
-            
-            // Random scale for variety
-            const scale = 0.8 + Math.random() * 0.4;
-            book.scale.set(scale, scale, scale);
-            
-            // Enable shadows
-            book.traverse((child) => {
-              if (child.isMesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
-                
-                // Add click interaction data
-                child.userData = {
-                  title: `Book ${Math.floor(Math.random() * 1000)}`,
-                  author: ['Macedonian Author', 'International Writer', 'Classic Author'][Math.floor(Math.random() * 3)],
-                  price: `${(299 + Math.random() * 500).toFixed(0)} MKD`,
-                  clickable: true
-                };
-              }
-            });
-            
-            // IMPORTANT: Add book as child of shelf (parent-child relationship)
-            shelfModel.add(book);
-          },
-          undefined,
-          (error) => {
-            console.error('Error loading book:', error);
-            // Fallback to procedural book if GLB fails
-            const fallbackBook = createProceduralBook(pos);
-            shelfModel.add(fallbackBook);
-          }
-        );
-      });
-    }
-
-    // Fallback procedural book (if GLB doesn't load)
-    function createProceduralBook(pos) {
-      const bookColors = [
-        0xff4444, 0x4444ff, 0x44ff44, 0xffaa00, 0xff00ff,
-        0x00ffff, 0xff8800, 0x8800ff, 0x00ff88, 0xffff00
-      ];
-      
-      const bookWidth = 0.12 + Math.random() * 0.1;
-      const bookHeight = 0.5 + Math.random() * 0.2;
-      const bookDepth = 0.6;
-      
-      const bookMaterial = new THREE.MeshStandardMaterial({
-        color: bookColors[Math.floor(Math.random() * bookColors.length)],
-        roughness: 0.5,
-        metalness: 0.1
-      });
-      
-      const book = new THREE.Mesh(
-        new THREE.BoxGeometry(bookWidth, bookHeight, bookDepth),
-        bookMaterial
-      );
-      
-      book.position.set(pos.x, pos.y, pos.z);
-      book.rotation.y = (Math.random() - 0.5) * 0.08;
-      book.castShadow = true;
-      book.userData = {
-        title: `Book ${Math.floor(Math.random() * 1000)}`,
-        author: ['Macedonian Author', 'International Writer', 'Classic Author'][Math.floor(Math.random() * 3)],
-        price: `${(299 + Math.random() * 500).toFixed(0)} MKD`,
-        clickable: true
-      };
-      
-      return book;
-    }
-
-    // Fallback procedural bookshelf
-    function createProceduralBookshelf(x, z, rotation) {
-      const shelfGroup = new THREE.Group();
-      
-      const frameMaterial = new THREE.MeshStandardMaterial({
-        color: 0x1a1a1a,
-        roughness: 0.4,
-        metalness: 0.3
-      });
-      
-      const backing = new THREE.Mesh(
-        new THREE.BoxGeometry(4, 4, 0.2),
-        frameMaterial
-      );
-      backing.position.set(0, 2, -0.3);
-      backing.castShadow = true;
-      backing.receiveShadow = true;
-      shelfGroup.add(backing);
-
-      for (let i = 0; i < 4; i++) {
-        const shelf = new THREE.Mesh(
-          new THREE.BoxGeometry(4, 0.05, 0.8),
-          frameMaterial
-        );
-        shelf.position.set(0, 0.5 + i * 1.0, 0);
-        shelf.castShadow = true;
-        shelf.receiveShadow = true;
-        shelfGroup.add(shelf);
-      }
-
-      return shelfGroup;
-    }
+    child.material = mat;
+    child.castShadow = true;
+    child.receiveShadow = true;
+  }
+});
 
 
+      // Scale fix (many GLBs import tiny)
+      shelf.scale.set(2.6, 2.6, 2.6);
 
-    // Add GLB bookshelves (these will load the models)
-    scene.add(createGLBBookshelf(-15, -8, Math.PI / 2));
+      group.add(shelf);
+      console.log("✅ Shelf loaded:", shelf);
+    },
+    undefined,
+    (error) => console.error("❌ Shelf load error:", error)
+  );
+
+  group.position.set(x, 0, z);
+  group.rotation.y = rotation;
+  return group;
+}
+
+
+    /* ---------------- ADD SHELVES ---------------- */
     scene.add(createGLBBookshelf(-15, 0, Math.PI / 2));
     scene.add(createGLBBookshelf(-15, 8, Math.PI / 2));
 
-    // Café counter
+    /* ---------------- CAFÉ COUNTER ---------------- */
     function createCafeCounter() {
       const counterGroup = new THREE.Group();
       
@@ -480,7 +353,7 @@ import * as THREE from 'three';
 
     scene.add(createCafeCounter());
 
-    // Seating area
+    /* ---------------- SEATING AREA ---------------- */
     function createSeatingArea() {
       const seatingGroup = new THREE.Group();
       
@@ -572,7 +445,7 @@ import * as THREE from 'three';
 
     scene.add(createSeatingArea());
 
-    // Neon sign - positioned behind the bar
+    /* ---------------- NEON SIGN ---------------- */
     function createNeonSign() {
       const neonGroup = new THREE.Group();
       
@@ -588,19 +461,17 @@ import * as THREE from 'three';
       panel.position.set(0, 0, 0);
       neonGroup.add(panel);
 
-      // Glow effect
       const glowLight = new THREE.PointLight(0xff0000, 2, 10);
       glowLight.position.set(0, 0, 0.5);
       neonGroup.add(glowLight);
 
-      // Position behind the bar (bar is at 0,0,0, so put sign behind it)
       neonGroup.position.set(0, 3, -1.5);
       return neonGroup;
     }
 
     scene.add(createNeonSign());
 
-    // Glass display case
+    /* ---------------- GLASS DISPLAY CASE ---------------- */
     function createDisplayCase(x, z) {
       const caseGroup = new THREE.Group();
       
@@ -648,17 +519,17 @@ import * as THREE from 'three';
 
     scene.add(createDisplayCase(15, 8));
 
-    // OrbitControls for smooth camera control
+    /* ---------------- CONTROLS ---------------- */
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.minDistance = 3;
     controls.maxDistance = 30;
-    controls.maxPolarAngle = Math.PI / 2; // Prevent going below ground
+    controls.maxPolarAngle = Math.PI / 2;
     controls.target.set(0, 2, 0);
     controls.update();
 
-    // Mouse interaction
+    /* ---------------- MOUSE INTERACTION ---------------- */
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
 
@@ -679,7 +550,6 @@ import * as THREE from 'three';
 
     window.addEventListener('click', onMouseClick);
 
-    // Book details functions
     window.showBookDetails = function(bookData) {
       document.getElementById('bookTitle').textContent = bookData.title;
       document.getElementById('bookAuthor').textContent = bookData.author;
@@ -691,26 +561,22 @@ import * as THREE from 'three';
       document.getElementById('bookDetails').style.display = 'none';
     };
 
-
-
-    // Resize
+    /* ---------------- RESIZE ---------------- */
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    // Animation
+    /* ---------------- ANIMATION LOOP ---------------- */
     let time = 0;
 
     function animate() {
       requestAnimationFrame(animate);
       time += 0.01;
-
-      // Update controls
+      
       controls.update();
-
-      // Ceiling installation subtle animation
+      
       scene.children.forEach(child => {
         if (child.children && child.children.length > 40) {
           child.rotation.y = Math.sin(time * 0.1) * 0.02;
@@ -719,6 +585,7 @@ import * as THREE from 'three';
 
       renderer.render(scene, camera);
     }
-
+    
     animate();
     document.getElementById('loading').style.display = 'none';
+ 
