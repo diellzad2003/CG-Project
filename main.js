@@ -23,6 +23,13 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.3;
 document.body.appendChild(renderer.domElement);
 
+/* ---------------- TEXTURE LOADER ---------------- */
+const texLoader = new THREE.TextureLoader();
+
+/* ---------------- GLTF LOADER ---------------- */
+const gltfLoader = new GLTFLoader();
+
+
 /* ---------------- ENV MAP (HDR) ---------------- */
 const pmremGenerator = new THREE.PMREMGenerator(renderer);
 pmremGenerator.compileEquirectangularShader();
@@ -67,36 +74,40 @@ scene.add(cafeLight);
 const fillLight = new THREE.PointLight(0xffffff, 1.2, 20);
 fillLight.position.set(0, 4, 10);
 scene.add(fillLight);
+/* ---------------- FLOOR  ---------------- */
 
-/* ---------------- FLOOR ---------------- */
-const texLoader = new THREE.TextureLoader();
-const tileRepeat = 6;
 
-const floorColor = texLoader.load('/textures/floor/Leather004_2K-JPG_Color.jpg');
-floorColor.encoding = THREE.sRGBEncoding;
 
-const floorNormal = texLoader.load('/textures/floor/Leather004_2K-JPG_NormalGL.jpg');
-
-[floorColor, floorNormal].forEach((t) => {
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(tileRepeat, tileRepeat);
+// Load the diffuse texture for the floor
+const floorTexture = texLoader.load('/textures/floor/oak_veneer_01_diff_2k.jpg', (texture) => {
+  texture.encoding = THREE.sRGBEncoding;
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(6, 6); // Adjust how many times the texture repeats across the floor
 });
 
+
+
+const floorMaterial = new THREE.MeshStandardMaterial({
+  map: floorTexture,
+  roughness: 0.9,
+  metalness: 0,
+});
+
+
+// Create a flat plane for the floor
 const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(30, 20),
-  new THREE.MeshStandardMaterial({
-    map: floorColor,
-    normalMap: floorNormal,
-    roughness: 0.9,
-    metalness: 0,
-    color: new THREE.Color(0xffffff)
-  })
+  new THREE.PlaneGeometry(30, 30), // width x height
+  floorMaterial
 );
-floor.position.set(0, 0, 6);
-floor.material.color.multiplyScalar(1.2);
+
+// Rotate to lie flat on the XZ plane
 floor.rotation.x = -Math.PI / 2;
+floor.position.set(0, 0, 6); // adjust Z if needed
 floor.receiveShadow = true;
+
 scene.add(floor);
+
+
 
 /* ---------------- BACK WALL ---------------- */
 const backWall = new THREE.Mesh(
@@ -124,9 +135,9 @@ leftWall.receiveShadow = true;
 scene.add(leftWall);
 
 /* ---------------- RIGHT WALL ---------------- */
-const rightWallTexture = texLoader.load('/textures/wall/ClassWallTexture.jpg'); // your class wall texture
+const rightWallTexture = texLoader.load('/textures/wall/window.jpg'); // your class wall texture
 rightWallTexture.wrapS = rightWallTexture.wrapT = THREE.RepeatWrapping;
-rightWallTexture.repeat.set(3, 2);
+rightWallTexture.repeat.set(1, 1);
 
 const rightWall = new THREE.Mesh(
   new THREE.PlaneGeometry(20, 10),
@@ -229,8 +240,6 @@ const shelfTextures = {
 };
 shelfTextures.albedo.colorSpace = THREE.SRGBColorSpace;
 
-/* ---------------- GLB LOADER ---------------- */
-const gltfLoader = new GLTFLoader();
 
 /* ---------------- GLB TABLE (NEW) ---------------- */
 function createGLBTable(x, z, rotation = 0) {
