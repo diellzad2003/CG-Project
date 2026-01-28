@@ -1,6 +1,8 @@
 import * as THREE from 'three';
     import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
     import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+    import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
+
 
     /* ---------------- SCENE ---------------- */
     const scene = new THREE.Scene();
@@ -22,6 +24,22 @@ import * as THREE from 'three';
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.3;
     document.body.appendChild(renderer.domElement);
+
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+pmremGenerator.compileEquirectangularShader();
+
+new RGBELoader()
+  .load('/hdr/studio.hdr', function (texture) {
+
+    const envMap = pmremGenerator.fromEquirectangular(texture).texture;
+
+    scene.environment = envMap;  // ← THIS FIXES THE CHAIRS
+    // scene.background = envMap; // optional if you want visible background
+
+    texture.dispose();
+    pmremGenerator.dispose();
+  });
+
 
     /* ---------------- LIGHTING ---------------- */
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -50,6 +68,11 @@ import * as THREE from 'three';
     cafeLight.position.set(0, 5, 0);
     cafeLight.castShadow = true;
     scene.add(cafeLight);
+
+    const fillLight = new THREE.PointLight(0xffffff, 1.2, 20);
+fillLight.position.set(0, 4, 10);
+scene.add(fillLight);
+
 
     /* ---------------- FLOOR ---------------- */
     const texLoader = new THREE.TextureLoader();
@@ -353,97 +376,117 @@ function createGLBBookshelf(x, z, rotation = 0) {
 
     scene.add(createCafeCounter());
 
-    /* ---------------- SEATING AREA ---------------- */
-    function createSeatingArea() {
-      const seatingGroup = new THREE.Group();
-      
-      const chairColors = [0xd4a574, 0x4a4a4a, 0xc97c5d, 0x6b8e23];
-      const positions = [
-        [-2, 0, -2], [2, 0, -2], [-2, 0, 2], [2, 0, 2],
-        [0, 0, 0], [-3, 0, 0], [3, 0, 0]
-      ];
 
-      positions.forEach((pos, idx) => {
-        const seat = new THREE.Mesh(
-          new THREE.BoxGeometry(0.8, 0.1, 0.8),
-          new THREE.MeshStandardMaterial({
-            color: chairColors[idx % chairColors.length],
+
+function createCafeSeatingClustersDispersed() {
+  const group = new THREE.Group();
+
+  const tableMat = new THREE.MeshStandardMaterial({
+    color: 0x2a2a2a,
+    roughness: 0.3,
+    metalness: 0.7
+  });
+
+  // Base positions for clusters (dispersed across width)
+  const clusterCenters = [
+  // Left side near shelves
+  { x: -11, z: 3 },
+  { x: -5, z: 4 },
+  { x: -7,  z: 1 },
+
+  // Center area (middle cluster closer to camera)
+  { x: -2, z: 8 },
+  { x: 0,  z: 3 },   // <-- moved closer to camera
+  { x: 2,  z: 6 },
+
+  // Right side near wall
+  { x: 12,  z: 5.5 },
+  { x: 7, z: 2.5 },
+  { x: 10, z: 3.5 }
+];
+
+
+
+  clusterCenters.forEach(center => {
+    // Slight random scatter for natural look
+    const offsetX = (Math.random() - 0.5) * 1.5;
+    const offsetZ = (Math.random() - 0.5) * 1.0;
+
+    const tableX = center.x + offsetX;
+    const tableZ = center.z + offsetZ;
+
+    // Table
+    const table = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.5, 0.5, 0.05, 16),
+      tableMat
+    );
+    table.position.set(tableX, 0.5, tableZ);
+    table.castShadow = true;
+    table.receiveShadow = true;
+    group.add(table);
+
+    const tableBase = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.45, 0.5, 0.5, 16),
+      tableMat
+    );
+    tableBase.position.set(tableX, 0.25, tableZ);
+    tableBase.castShadow = true;
+    group.add(tableBase);
+
+    // Chair 1: facing counter (original color)
+    const chair1 = createGLBChair(tableX - 0.8, tableZ, Math.PI);
+    group.add(chair1);
+
+    // Chair 2: facing camera (light pink)
+    const chair2 = createGLBChair(tableX + 0.8, tableZ, 0, 0xffc0cb);
+    group.add(chair2);
+  });
+
+  return group;
+}
+
+// Update createGLBChair to optionally set color (only overrides if color provided)
+function createGLBChair(x, z, rotation = 0, color = null) {
+  const group = new THREE.Group();
+
+  gltfLoader.load('/models/chair/chair.glb', (gltf) => {
+    const chair = gltf.scene;
+
+    chair.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+
+        if (color !== null) {
+          child.material = new THREE.MeshStandardMaterial({
+            color: new THREE.Color(color),
             roughness: 0.7,
-            metalness: 0.2
-          })
-        );
-        seat.position.set(pos[0], 0.5, pos[2]);
-        seat.castShadow = true;
-        seat.receiveShadow = true;
-        seatingGroup.add(seat);
-
-        const back = new THREE.Mesh(
-          new THREE.BoxGeometry(0.8, 0.6, 0.1),
-          new THREE.MeshStandardMaterial({
-            color: chairColors[idx % chairColors.length],
-            roughness: 0.7
-          })
-        );
-        back.position.set(pos[0], 0.8, pos[2] - 0.35);
-        back.castShadow = true;
-        seatingGroup.add(back);
-
-        const legMaterial = new THREE.MeshStandardMaterial({
-          color: 0x2a2a2a,
-          roughness: 0.3,
-          metalness: 0.8
-        });
-
-        const legPositions = [
-          [pos[0] - 0.3, 0.25, pos[2] - 0.3],
-          [pos[0] + 0.3, 0.25, pos[2] - 0.3],
-          [pos[0] - 0.3, 0.25, pos[2] + 0.3],
-          [pos[0] + 0.3, 0.25, pos[2] + 0.3]
-        ];
-
-        legPositions.forEach(legPos => {
-          const leg = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.04, 0.04, 0.5),
-            legMaterial
-          );
-          leg.position.set(...legPos);
-          leg.castShadow = true;
-          seatingGroup.add(leg);
-        });
-
-        if (idx % 2 === 0 && idx < 4) {
-          const table = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.4, 0.4, 0.05),
-            new THREE.MeshStandardMaterial({
-              color: 0x2a2a2a,
-              roughness: 0.2,
-              metalness: 0.7
-            })
-          );
-          table.position.set(pos[0] + 1.2, 0.5, pos[2]);
-          table.castShadow = true;
-          table.receiveShadow = true;
-          seatingGroup.add(table);
-
-          const tableBase = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.35, 0.4, 0.5),
-            new THREE.MeshStandardMaterial({
-              color: 0x2a2a2a,
-              roughness: 0.3,
-              metalness: 0.7
-            })
-          );
-          tableBase.position.set(pos[0] + 1.2, 0.25, pos[2]);
-          tableBase.castShadow = true;
-          seatingGroup.add(tableBase);
+            metalness: 0.2,
+            side: THREE.DoubleSide
+          });
         }
-      });
+        // else keep original GLB material
+      }
+    });
 
-      seatingGroup.position.set(2, 0, 8);
-      return seatingGroup;
-    }
+    // SCALE & ALIGN TO FLOOR
+    chair.scale.set(2.2, 2.2, 2.2);
+    const box = new THREE.Box3().setFromObject(chair);
+    chair.position.y -= box.min.y;
 
-    scene.add(createSeatingArea());
+    group.add(chair);
+  });
+
+  group.position.set(x, 0, z);
+  group.rotation.y = rotation;
+
+  return group;
+}
+
+// Remove old rows and add new clusters
+scene.add(createCafeSeatingClustersDispersed());
+
+
 
     /* ---------------- NEON SIGN ---------------- */
     function createNeonSign() {
