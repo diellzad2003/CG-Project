@@ -1,110 +1,103 @@
 import * as THREE from 'three';
-    import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-    import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-    import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 
+/* ---------------- SCENE ---------------- */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1a1a);
+scene.fog = new THREE.Fog(0x1a1a1a, 25, 60);
 
-    /* ---------------- SCENE ---------------- */
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x1a1a1a);
-    scene.fog = new THREE.Fog(0x1a1a1a, 25, 60);
+/* ---------------- CAMERA ---------------- */
+const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 200);
+camera.position.set(0, 3, 12);
 
-    /* ---------------- CAMERA ---------------- */
-    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 200);
-    camera.position.set(0, 3, 12);
+/* ---------------- RENDERER ---------------- */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.autoUpdate = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.3;
+document.body.appendChild(renderer.domElement);
 
-    /* ---------------- RENDERER ---------------- */
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.autoUpdate = true;
-
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.3;
-    document.body.appendChild(renderer.domElement);
-
-    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+/* ---------------- ENV MAP (HDR) ---------------- */
+const pmremGenerator = new THREE.PMREMGenerator(renderer);
 pmremGenerator.compileEquirectangularShader();
 
 new RGBELoader()
   .load('/hdr/studio.hdr', function (texture) {
-
     const envMap = pmremGenerator.fromEquirectangular(texture).texture;
-
-    scene.environment = envMap;  // ← THIS FIXES THE CHAIRS
+    scene.environment = envMap; // ← THIS FIXES THE CHAIRS
     // scene.background = envMap; // optional if you want visible background
-
     texture.dispose();
     pmremGenerator.dispose();
   });
 
+/* ---------------- LIGHTING ---------------- */
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+scene.add(ambientLight);
 
-    /* ---------------- LIGHTING ---------------- */
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    scene.add(ambientLight);
+const ceilingLight = new THREE.PointLight(0xffcc88, 2.5, 25);
+ceilingLight.position.set(0, 8, 0);
+ceilingLight.castShadow = false;
+scene.add(ceilingLight);
 
-    const ceilingLight = new THREE.PointLight(0xffcc88, 2.5, 25);
-    ceilingLight.position.set(0, 8, 0);
-    ceilingLight.castShadow = false;
-    scene.add(ceilingLight);
+const spotlight1 = new THREE.SpotLight(0xffffff, 3, 30, Math.PI / 6, 0.3);
+spotlight1.position.set(-8, 8, -5);
+spotlight1.target.position.set(-8, 0, -5);
+spotlight1.castShadow = false;
+scene.add(spotlight1);
+scene.add(spotlight1.target);
 
-    const spotlight1 = new THREE.SpotLight(0xffffff, 3, 30, Math.PI / 6, 0.3);
-    spotlight1.position.set(-8, 8, -5);
-    spotlight1.target.position.set(-8, 0, -5);
-    spotlight1.castShadow = false;
-    scene.add(spotlight1);
-    scene.add(spotlight1.target);
+const spotlight2 = new THREE.SpotLight(0xffffff, 3, 30, Math.PI / 6, 0.3);
+spotlight2.position.set(8, 8, -5);
+spotlight2.target.position.set(8, 0, -5);
+spotlight2.castShadow = false;
+scene.add(spotlight2);
+scene.add(spotlight2.target);
 
-    const spotlight2 = new THREE.SpotLight(0xffffff, 3, 30, Math.PI / 6, 0.3);
-    spotlight2.position.set(8, 8, -5);
-    spotlight2.target.position.set(8, 0, -5);
-    spotlight2.castShadow = false;
-    scene.add(spotlight2);
-    scene.add(spotlight2.target);
+const cafeLight = new THREE.PointLight(0xffaa66, 2.0, 20);
+cafeLight.position.set(0, 5, 0);
+cafeLight.castShadow = true;
+scene.add(cafeLight);
 
-    const cafeLight = new THREE.PointLight(0xffaa66, 2.0, 20);
-    cafeLight.position.set(0, 5, 0);
-    cafeLight.castShadow = true;
-    scene.add(cafeLight);
-
-    const fillLight = new THREE.PointLight(0xffffff, 1.2, 20);
+const fillLight = new THREE.PointLight(0xffffff, 1.2, 20);
 fillLight.position.set(0, 4, 10);
 scene.add(fillLight);
 
+/* ---------------- FLOOR ---------------- */
+const texLoader = new THREE.TextureLoader();
+const tileRepeat = 6;
 
-    /* ---------------- FLOOR ---------------- */
-    const texLoader = new THREE.TextureLoader();
-    const tileRepeat = 6;
-    
-    const floorColor = texLoader.load('/textures/floor/Leather004_2K-JPG_Color.jpg');
-    floorColor.encoding = THREE.sRGBEncoding;
-    
-    const floorNormal = texLoader.load('/textures/floor/Leather004_2K-JPG_NormalGL.jpg');
-    
-    [floorColor, floorNormal].forEach((t) => {
-      t.wrapS = t.wrapT = THREE.RepeatWrapping;
-      t.repeat.set(tileRepeat, tileRepeat);
-    });
-    
-    
+const floorColor = texLoader.load('/textures/floor/Leather004_2K-JPG_Color.jpg');
+floorColor.encoding = THREE.sRGBEncoding;
 
-    const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(30, 20),
-      new THREE.MeshStandardMaterial({
-        map: floorColor,
-        normalMap: floorNormal,
-        roughness: 0.9,
-        metalness: 0,
-        color: new THREE.Color(0xffffff)
-      })
-    );
-    floor.position.set(0,0,6);
-    floor.material.color.multiplyScalar(1.2);
-    floor.rotation.x = -Math.PI / 2;
-    floor.receiveShadow = true;
-    scene.add(floor);
+const floorNormal = texLoader.load('/textures/floor/Leather004_2K-JPG_NormalGL.jpg');
+
+[floorColor, floorNormal].forEach((t) => {
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(tileRepeat, tileRepeat);
+});
+
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(30, 20),
+  new THREE.MeshStandardMaterial({
+    map: floorColor,
+    normalMap: floorNormal,
+    roughness: 0.9,
+    metalness: 0,
+    color: new THREE.Color(0xffffff)
+  })
+);
+floor.position.set(0, 0, 6);
+floor.material.color.multiplyScalar(1.2);
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+
 /* ---------------- BACK WALL ---------------- */
 const backWall = new THREE.Mesh(
   new THREE.PlaneGeometry(30, 10), // width, height
@@ -113,10 +106,10 @@ const backWall = new THREE.Mesh(
     roughness: 0.8
   })
 );
-
 backWall.position.set(0, 5, -4); // ← RIGHT BEHIND BAR
 backWall.receiveShadow = true;
 scene.add(backWall);
+
 /* ---------------- LEFT WALL ---------------- */
 const leftWall = new THREE.Mesh(
   new THREE.PlaneGeometry(20, 10), // width, height
@@ -125,11 +118,11 @@ const leftWall = new THREE.Mesh(
     roughness: 0.8
   })
 );
-
 leftWall.position.set(-15, 5, 6); // left side
 leftWall.rotation.y = Math.PI / 2; // rotate to face inward
 leftWall.receiveShadow = true;
 scene.add(leftWall);
+
 /* ---------------- RIGHT WALL ---------------- */
 const rightWallTexture = texLoader.load('/textures/wall/ClassWallTexture.jpg'); // your class wall texture
 rightWallTexture.wrapS = rightWallTexture.wrapT = THREE.RepeatWrapping;
@@ -142,110 +135,143 @@ const rightWall = new THREE.Mesh(
     roughness: 0.8
   })
 );
-
 rightWall.position.set(15, 5, 6); // right side
 rightWall.rotation.y = -Math.PI / 2; // rotate to face inward
 rightWall.receiveShadow = true;
 scene.add(rightWall);
 
+/* ---------------- CEILING ---------------- */
+const ceiling = new THREE.Mesh(
+  new THREE.PlaneGeometry(30, 20),
+  new THREE.MeshStandardMaterial({
+    color: 0x0a0a0a,
+    roughness: 0.9,
+    side: THREE.DoubleSide
+  })
+);
+ceiling.position.set(0, 10, 6);
+ceiling.rotation.x = Math.PI / 2;
+scene.add(ceiling);
 
-    /* ---------------- CEILING ---------------- */
-    const ceiling = new THREE.Mesh(
-      new THREE.PlaneGeometry(30, 20),
-      new THREE.MeshStandardMaterial({ 
-        color: 0x0a0a0a,
-        roughness: 0.9,
-        side: THREE.DoubleSide
-      })
+/* ---------------- CEILING INSTALLATION ---------------- */
+function createCeilingInstallation() {
+  const group = new THREE.Group();
+  const woodMaterial = new THREE.MeshStandardMaterial({
+    color: 0x8b6f47,
+    roughness: 0.7,
+    metalness: 0.1
+  });
+
+  const numLines = 50;
+  const spacing = 1.0;
+  const coverageWidth = 50;
+
+  for (let i = 0; i < numLines; i++) {
+    const length = 0.8 + Math.random() * 2.0;
+    const xPos = -coverageWidth / 2 + (i * spacing);
+
+    const slat = new THREE.Mesh(
+      new THREE.BoxGeometry(0.25, length, 0.25),
+      woodMaterial
     );
-    ceiling.position.set(0,10,6);
-    ceiling.rotation.x = Math.PI / 2;
-    scene.add(ceiling);
 
-    /* ---------------- CEILING INSTALLATION ---------------- */
-    function createCeilingInstallation() {
-      const group = new THREE.Group();
-      const woodMaterial = new THREE.MeshStandardMaterial({
-        color: 0x8b6f47,
-        roughness: 0.7,
-        metalness: 0.1
-      });
+    slat.position.set(xPos, 10 - length / 2, 0);
+    slat.castShadow = true;
+    group.add(slat);
+  }
 
-      const numLines = 50;
-      const spacing = 1.0;
-      const coverageWidth = 50;
-      
-      for (let i = 0; i < numLines; i++) {
-        const length = 0.8 + Math.random() * 2.0;
-        const xPos = -coverageWidth / 2 + (i * spacing);
-        
-        const slat = new THREE.Mesh(
-          new THREE.BoxGeometry(0.25, length, 0.25),
-          woodMaterial
-        );
-        
-        slat.position.set(xPos, 10 - length / 2, 0);
-        slat.castShadow = true;
-        
-        group.add(slat);
-      }
-      
-      for (let i = 0; i < 25; i++) {
-        const length = 0.9 + Math.random() * 1.8;
-        const xPos = -coverageWidth / 2 + (i * spacing * 2);
-        const zOffset = 5 + Math.random() * 5;
-        
-        const slat = new THREE.Mesh(
-          new THREE.BoxGeometry(0.25, length, 0.25),
-          woodMaterial
-        );
-        
-        slat.position.set(xPos, 10 - length / 2, zOffset);
-        slat.castShadow = true;
-        
-        group.add(slat);
-        
-        const slat2 = new THREE.Mesh(
-          new THREE.BoxGeometry(0.25, length, 0.25),
-          woodMaterial
-        );
-        
-        slat2.position.set(xPos, 10 - length / 2, -zOffset);
-        slat2.castShadow = true;
-        
-        group.add(slat2);
-      }
-      
-      for (let i = 0; i < 6; i++) {
-        const xPos = -20 + (i * 8);
-        const zPos = -10 + Math.random() * 20;
-        
-        const ceilingSpotlight = new THREE.SpotLight(0xffcc88, 1.5, 15, Math.PI / 8, 0.5);
-        ceilingSpotlight.position.set(xPos, 10, zPos);
-        ceilingSpotlight.target.position.set(xPos, 0, zPos);
-        ceilingSpotlight.castShadow = true;
-        
-        group.add(ceilingSpotlight);
-        group.add(ceilingSpotlight.target);
-      }
-      
-      return group;
-    }
-    
-    scene.add(createCeilingInstallation());
+  for (let i = 0; i < 25; i++) {
+    const length = 0.9 + Math.random() * 1.8;
+    const xPos = -coverageWidth / 2 + (i * spacing * 2);
+    const zOffset = 5 + Math.random() * 5;
 
-    /* ---------------- SHELF TEXTURES ---------------- */
-  const shelfTextures = {
+    const slat = new THREE.Mesh(
+      new THREE.BoxGeometry(0.25, length, 0.25),
+      woodMaterial
+    );
+
+    slat.position.set(xPos, 10 - length / 2, zOffset);
+    slat.castShadow = true;
+    group.add(slat);
+
+    const slat2 = new THREE.Mesh(
+      new THREE.BoxGeometry(0.25, length, 0.25),
+      woodMaterial
+    );
+
+    slat2.position.set(xPos, 10 - length / 2, -zOffset);
+    slat2.castShadow = true;
+    group.add(slat2);
+  }
+
+  for (let i = 0; i < 6; i++) {
+    const xPos = -20 + (i * 8);
+    const zPos = -10 + Math.random() * 20;
+
+    const ceilingSpotlight = new THREE.SpotLight(0xffcc88, 1.5, 15, Math.PI / 8, 0.5);
+    ceilingSpotlight.position.set(xPos, 10, zPos);
+    ceilingSpotlight.target.position.set(xPos, 0, zPos);
+    ceilingSpotlight.castShadow = true;
+
+    group.add(ceilingSpotlight);
+    group.add(ceilingSpotlight.target);
+  }
+
+  return group;
+}
+scene.add(createCeilingInstallation());
+
+/* ---------------- SHELF TEXTURES ---------------- */
+const shelfTextures = {
   albedo: texLoader.load('/models/shelves/shelves_model/texture/SchoolBagShelves_Albedo.png'),
   roughness: texLoader.load('/models/shelves/shelves_model/texture/SchoolBagShelves_Roughness.png'),
   normal: texLoader.load('/models/shelves/shelves_model/texture/SchoolBagShelves_normals(opengl).png')
 };
-
 shelfTextures.albedo.colorSpace = THREE.SRGBColorSpace;
 
+/* ---------------- GLB LOADER ---------------- */
+const gltfLoader = new GLTFLoader();
 
-    /* ---------------- GLB LOADER ---------------- */
-    const gltfLoader = new GLTFLoader();
+/* ---------------- GLB TABLE (NEW) ---------------- */
+function createGLBTable(x, z, rotation = 0) {
+  const group = new THREE.Group();
+
+  gltfLoader.load(
+    '/models/tables/uploads_files_3745265_Table.glb',
+    (gltf) => {
+      const table = gltf.scene;
+
+      table.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+
+          // black table
+          child.material = new THREE.MeshStandardMaterial({
+            color: 0x050505,
+            roughness: 0.6,
+            metalness: 0.2
+          });
+        }
+      });
+
+      
+      table.scale.set(1.2, 1.35, 1.2);
+
+      // snap to floor
+      const box = new THREE.Box3().setFromObject(table);
+      table.position.y -= box.min.y;
+
+      group.add(table);
+    },
+    undefined,
+    (error) => console.error('❌ Table load error:', error)
+  );
+
+  group.position.set(x, 0, z);
+  group.rotation.y = rotation;
+  return group;
+}
 
 function createGLBBookshelf(x, z, rotation = 0) {
   const group = new THREE.Group();
@@ -255,28 +281,24 @@ function createGLBBookshelf(x, z, rotation = 0) {
     (gltf) => {
       const shelf = gltf.scene;
 
-    shelf.traverse((child) => {
-  if (child.isMesh) {
+      shelf.traverse((child) => {
+        if (child.isMesh) {
+          const mat = new THREE.MeshStandardMaterial({
+            map: shelfTextures.albedo,
+            normalMap: shelfTextures.normal,
+            roughnessMap: shelfTextures.roughness,
+            roughness: 1.0,
+            metalness: 0.0,
+            color: new THREE.Color(0xd9b99b)
+          });
 
-    const mat = new THREE.MeshStandardMaterial({
-      map: shelfTextures.albedo,
-      normalMap: shelfTextures.normal,
-      roughnessMap: shelfTextures.roughness,
-      roughness: 1.0,
-      metalness: 0.0,
-      color: new THREE.Color(0xd9b99b) 
-    });
+          child.material = mat;
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
 
-    child.material = mat;
-    child.castShadow = true;
-    child.receiveShadow = true;
-  }
-});
-
-
-      // Scale fix (many GLBs import tiny)
       shelf.scale.set(2.6, 2.6, 2.6);
-
       group.add(shelf);
       console.log("✅ Shelf loaded:", shelf);
     },
@@ -289,163 +311,92 @@ function createGLBBookshelf(x, z, rotation = 0) {
   return group;
 }
 
+/* ---------------- ADD SHELVES ---------------- */
+scene.add(createGLBBookshelf(-15, 0, Math.PI / 2));
+scene.add(createGLBBookshelf(-15, 8, Math.PI / 2));
 
-    /* ---------------- ADD SHELVES ---------------- */
-    scene.add(createGLBBookshelf(-15, 0, Math.PI / 2));
-    scene.add(createGLBBookshelf(-15, 8, Math.PI / 2));
+/* ---------------- CAFÉ COUNTER ---------------- */
+function createCafeCounter() {
+  const counterGroup = new THREE.Group();
 
-    /* ---------------- CAFÉ COUNTER ---------------- */
-    function createCafeCounter() {
-      const counterGroup = new THREE.Group();
-      
-      const counterBody = new THREE.Mesh(
-        new THREE.BoxGeometry(6, 1.2, 2),
+  const counterBody = new THREE.Mesh(
+    new THREE.BoxGeometry(6, 1.2, 2),
+    new THREE.MeshStandardMaterial({
+      color: 0x1a1a1a,
+      roughness: 0.3,
+      metalness: 0.4
+    })
+  );
+  counterBody.position.set(0, 0.6, 0);
+  counterBody.castShadow = true;
+  counterBody.receiveShadow = true;
+  counterGroup.add(counterBody);
+
+  const counterTop = new THREE.Mesh(
+    new THREE.BoxGeometry(6.2, 0.1, 2.2),
+    new THREE.MeshStandardMaterial({
+      color: 0x8b6f47,
+      roughness: 0.5,
+      metalness: 0.2
+    })
+  );
+  counterTop.position.set(0, 1.25, 0);
+  counterTop.castShadow = true;
+  counterTop.receiveShadow = true;
+  counterGroup.add(counterTop);
+
+  for (let i = 0; i < 3; i++) {
+    const shelf = new THREE.Mesh(
+      new THREE.BoxGeometry(5, 0.1, 0.4),
+      new THREE.MeshStandardMaterial({
+        color: 0xc9a870,
+        roughness: 0.6
+      })
+    );
+    shelf.position.set(0, 2.5 + i * 0.8, -0.8);
+    shelf.castShadow = true;
+    counterGroup.add(shelf);
+
+    for (let j = 0; j < 5; j++) {
+      const item = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.08, 0.08, 0.4),
         new THREE.MeshStandardMaterial({
-          color: 0x1a1a1a,
+          color: [0x8b4513, 0x2f4f2f, 0x4a4a4a][Math.floor(Math.random() * 3)],
           roughness: 0.3,
-          metalness: 0.4
+          metalness: 0.5
         })
       );
-      counterBody.position.set(0, 0.6, 0);
-      counterBody.castShadow = true;
-      counterBody.receiveShadow = true;
-      counterGroup.add(counterBody);
-
-      const counterTop = new THREE.Mesh(
-        new THREE.BoxGeometry(6.2, 0.1, 2.2),
-        new THREE.MeshStandardMaterial({
-          color: 0x8b6f47,
-          roughness: 0.5,
-          metalness: 0.2
-        })
-      );
-      counterTop.position.set(0, 1.25, 0);
-      counterTop.castShadow = true;
-      counterTop.receiveShadow = true;
-      counterGroup.add(counterTop);
-
-      for (let i = 0; i < 3; i++) {
-        const shelf = new THREE.Mesh(
-          new THREE.BoxGeometry(5, 0.1, 0.4),
-          new THREE.MeshStandardMaterial({
-            color: 0xc9a870,
-            roughness: 0.6
-          })
-        );
-        shelf.position.set(0, 2.5 + i * 0.8, -0.8);
-        shelf.castShadow = true;
-        counterGroup.add(shelf);
-
-        for (let j = 0; j < 5; j++) {
-          const item = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.08, 0.08, 0.4),
-            new THREE.MeshStandardMaterial({
-              color: [0x8b4513, 0x2f4f2f, 0x4a4a4a][Math.floor(Math.random() * 3)],
-              roughness: 0.3,
-              metalness: 0.5
-            })
-          );
-          item.position.set(-2 + j * 1, 2.7 + i * 0.8, -0.8);
-          item.castShadow = true;
-          counterGroup.add(item);
-        }
-      }
-
-      for (let i = 0; i < 3; i++) {
-        const lampShade = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.3, 0.4, 0.3, 8),
-          new THREE.MeshStandardMaterial({
-            color: 0xff8844,
-            emissive: 0xff6622,
-            emissiveIntensity: 0.5,
-            roughness: 0.4
-          })
-        );
-        lampShade.position.set(-2 + i * 2, 4.2, 0);
-        counterGroup.add(lampShade);
-
-        const light = new THREE.PointLight(0xffaa66, 0.8, 8);
-        light.position.set(-2 + i * 2, 4, 0);
-        light.castShadow = true;
-        counterGroup.add(light);
-      }
-
-      counterGroup.position.set(0, 0, 0);
-      return counterGroup;
+      item.position.set(-2 + j * 1, 2.7 + i * 0.8, -0.8);
+      item.castShadow = true;
+      counterGroup.add(item);
     }
+  }
 
-    scene.add(createCafeCounter());
-
-
-
-function createCafeSeatingClustersDispersed() {
-  const group = new THREE.Group();
-
-  const tableMat = new THREE.MeshStandardMaterial({
-    color: 0x2a2a2a,
-    roughness: 0.3,
-    metalness: 0.7
-  });
-
-  // Base positions for clusters (dispersed across width)
-  const clusterCenters = [
-  // Left side near shelves
-  { x: -11, z: 3 },
-  { x: -5, z: 4 },
-  { x: -7,  z: 1 },
-
-  // Center area (middle cluster closer to camera)
-  { x: -2, z: 8 },
-  { x: 0,  z: 3 },   // <-- moved closer to camera
-  { x: 2,  z: 6 },
-
-  // Right side near wall
-  { x: 12,  z: 5.5 },
-  { x: 7, z: 2.5 },
-  { x: 10, z: 3.5 }
-];
-
-
-
-  clusterCenters.forEach(center => {
-    // Slight random scatter for natural look
-    const offsetX = (Math.random() - 0.5) * 1.5;
-    const offsetZ = (Math.random() - 0.5) * 1.0;
-
-    const tableX = center.x + offsetX;
-    const tableZ = center.z + offsetZ;
-
-    // Table
-    const table = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.5, 0.5, 0.05, 16),
-      tableMat
+  for (let i = 0; i < 3; i++) {
+    const lampShade = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.3, 0.4, 0.3, 8),
+      new THREE.MeshStandardMaterial({
+        color: 0xff8844,
+        emissive: 0xff6622,
+        emissiveIntensity: 0.5,
+        roughness: 0.4
+      })
     );
-    table.position.set(tableX, 0.5, tableZ);
-    table.castShadow = true;
-    table.receiveShadow = true;
-    group.add(table);
+    lampShade.position.set(-2 + i * 2, 4.2, 0);
+    counterGroup.add(lampShade);
 
-    const tableBase = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.45, 0.5, 0.5, 16),
-      tableMat
-    );
-    tableBase.position.set(tableX, 0.25, tableZ);
-    tableBase.castShadow = true;
-    group.add(tableBase);
+    const light = new THREE.PointLight(0xffaa66, 0.8, 8);
+    light.position.set(-2 + i * 2, 4, 0);
+    light.castShadow = true;
+    counterGroup.add(light);
+  }
 
-    // Chair 1: facing counter (original color)
-    const chair1 = createGLBChair(tableX - 0.8, tableZ, Math.PI);
-    group.add(chair1);
-
-    // Chair 2: facing camera (light pink)
-    const chair2 = createGLBChair(tableX + 0.8, tableZ, 0, 0xffc0cb);
-    group.add(chair2);
-  });
-
-  return group;
+  counterGroup.position.set(0, 0, 0);
+  return counterGroup;
 }
+scene.add(createCafeCounter());
 
-// Update createGLBChair to optionally set color (only overrides if color provided)
+/* ---------------- CHAIRS (UNCHANGED) ---------------- */
 function createGLBChair(x, z, rotation = 0, color = null) {
   const group = new THREE.Group();
 
@@ -465,11 +416,10 @@ function createGLBChair(x, z, rotation = 0, color = null) {
             side: THREE.DoubleSide
           });
         }
-        // else keep original GLB material
+        
       }
     });
 
-    // SCALE & ALIGN TO FLOOR
     chair.scale.set(2.2, 2.2, 2.2);
     const box = new THREE.Box3().setFromObject(chair);
     chair.position.y -= box.min.y;
@@ -479,95 +429,134 @@ function createGLBChair(x, z, rotation = 0, color = null) {
 
   group.position.set(x, 0, z);
   group.rotation.y = rotation;
+  return group;
+}
+
+/* ---------------- SEATING: ONE TABLE PER CHAIR ---------------- */
+function createCafeSeatingClustersDispersed() {
+  const group = new THREE.Group();
+
+  const clusterCenters = [
+    { x: -11, z: 3 },
+    { x: -5,  z: 4 },
+    { x: -7,  z: 1 },
+    { x: -2,  z: 8 },
+    { x: 0,   z: 3 },
+    { x: 2,   z: 6 },
+    { x: 12,  z: 5.5 },
+    { x: 7,   z: 2.5 },
+    { x: 10,  z: 3.5 }
+  ];
+
+  clusterCenters.forEach(center => {
+    const offsetX = (Math.random() - 0.5) * 1.5;
+    const offsetZ = (Math.random() - 0.5) * 1.0;
+
+    const baseX = center.x + offsetX;
+    const baseZ = center.z + offsetZ;
+
+    // spacing between the two chair+table pairs
+    const pairOffset = 1.35;
+
+   
+    const table1X = baseX - pairOffset;
+    const table1Z = baseZ;
+    const rot1 = Math.random() * Math.PI * 2;
+
+    group.add(createGLBTable(table1X, table1Z, rot1));
+    group.add(createGLBChair(table1X, table1Z + 0.9, Math.PI)); // original gray
+
+    // --------- Pair 2: Pink chair + its own table ----------
+    const table2X = baseX + pairOffset;
+    const table2Z = baseZ;
+    const rot2 = Math.random() * Math.PI * 2;
+
+    group.add(createGLBTable(table2X, table2Z, rot2));
+    group.add(createGLBChair(table2X, table2Z - 0.9, 0, 0xffc0cb)); // pink
+  });
 
   return group;
 }
 
-// Remove old rows and add new clusters
 scene.add(createCafeSeatingClustersDispersed());
 
+/* ---------------- NEON SIGN ---------------- */
+function createNeonSign() {
+  const neonGroup = new THREE.Group();
 
+  const panel = new THREE.Mesh(
+    new THREE.BoxGeometry(4, 1.5, 0.1),
+    new THREE.MeshStandardMaterial({
+      color: 0xff0000,
+      emissive: 0xff0000,
+      emissiveIntensity: 1.5,
+      roughness: 0.2
+    })
+  );
+  panel.position.set(0, 0, 0);
+  neonGroup.add(panel);
 
-    /* ---------------- NEON SIGN ---------------- */
-    function createNeonSign() {
-      const neonGroup = new THREE.Group();
-      
-      const panel = new THREE.Mesh(
-        new THREE.BoxGeometry(4, 1.5, 0.1),
-        new THREE.MeshStandardMaterial({
-          color: 0xff0000,
-          emissive: 0xff0000,
-          emissiveIntensity: 1.5,
-          roughness: 0.2
-        })
-      );
-      panel.position.set(0, 0, 0);
-      neonGroup.add(panel);
+  const glowLight = new THREE.PointLight(0xff0000, 2, 10);
+  glowLight.position.set(0, 0, 0.5);
+  neonGroup.add(glowLight);
 
-      const glowLight = new THREE.PointLight(0xff0000, 2, 10);
-      glowLight.position.set(0, 0, 0.5);
-      neonGroup.add(glowLight);
+  neonGroup.position.set(0, 3, -1.5);
+  return neonGroup;
+}
+scene.add(createNeonSign());
 
-      neonGroup.position.set(0, 3, -1.5);
-      return neonGroup;
-    }
+/* ---------------- GLASS DISPLAY CASE ---------------- */
+function createDisplayCase(x, z) {
+  const caseGroup = new THREE.Group();
 
-    scene.add(createNeonSign());
+  const glassMaterial = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.3,
+    roughness: 0.1,
+    metalness: 0.9
+  });
 
-    /* ---------------- GLASS DISPLAY CASE ---------------- */
-    function createDisplayCase(x, z) {
-      const caseGroup = new THREE.Group();
-      
-      const glassMaterial = new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        transparent: true,
-        opacity: 0.3,
-        roughness: 0.1,
-        metalness: 0.9
-      });
+  const glassPanel = new THREE.Mesh(
+    new THREE.BoxGeometry(2, 2, 2),
+    glassMaterial
+  );
+  glassPanel.position.set(0, 1, 0);
+  glassPanel.castShadow = true;
+  glassPanel.receiveShadow = true;
+  caseGroup.add(glassPanel);
 
-      const glassPanel = new THREE.Mesh(
-        new THREE.BoxGeometry(2, 2, 2),
-        glassMaterial
-      );
-      glassPanel.position.set(0, 1, 0);
-      glassPanel.castShadow = true;
-      glassPanel.receiveShadow = true;
-      caseGroup.add(glassPanel);
+  const frameMaterial = new THREE.MeshStandardMaterial({
+    color: 0x2a2a2a,
+    roughness: 0.3,
+    metalness: 0.8
+  });
 
-      const frameMaterial = new THREE.MeshStandardMaterial({
-        color: 0x2a2a2a,
-        roughness: 0.3,
-        metalness: 0.8
-      });
+  const edges = [
+    [0, 0, -1], [0, 0, 1], [0, 2, -1], [0, 2, 1],
+    [-1, 1, 0], [1, 1, 0]
+  ];
 
-      const edges = [
-        [0, 0, -1], [0, 0, 1], [0, 2, -1], [0, 2, 1],
-        [-1, 1, 0], [1, 1, 0]
-      ];
+  edges.forEach(pos => {
+    const frame = new THREE.Mesh(
+      new THREE.BoxGeometry(0.05, pos[1] === 1 ? 2 : 0.05, pos[2] === 0 ? 2 : 0.05),
+      frameMaterial
+    );
+    frame.position.set(pos[0], pos[1], pos[2]);
+    frame.castShadow = true;
+    caseGroup.add(frame);
+  });
 
-      edges.forEach(pos => {
-        const frame = new THREE.Mesh(
-          new THREE.BoxGeometry(0.05, pos[1] === 1 ? 2 : 0.05, pos[2] === 0 ? 2 : 0.05),
-          frameMaterial
-        );
-        frame.position.set(pos[0], pos[1], pos[2]);
-        frame.castShadow = true;
-        caseGroup.add(frame);
-      });
+  caseGroup.position.set(x, 0, z);
+  return caseGroup;
+}
 
-      caseGroup.position.set(x, 0, z);
-      return caseGroup;
-    }
-
-
-
+/* ---------------- BAR SIDE PILLARS ---------------- */
 function createBarSidePillars() {
   const group = new THREE.Group();
 
-  
   const pillarMat = new THREE.MeshStandardMaterial({
-    color: 0x8b7357,   
+    color: 0x8b7357,
     roughness: 0.9,
     metalness: 0.05
   });
@@ -599,19 +588,17 @@ function createBarSidePillars() {
   const stripMat = new THREE.MeshStandardMaterial({
     color: 0xffb26a,
     emissive: 0xff7e2e,
-    emissiveIntensity: 0.28, 
+    emissiveIntensity: 0.28,
     roughness: 0.6,
     metalness: 0.1
   });
 
- 
-  const height = 9.0;          
-  const yCenter = height / 2;  
+  const height = 9.0;
+  const yCenter = height / 2;
 
   function makeOnePillar(x) {
     const pillar = new THREE.Group();
 
-   
     const base = new THREE.Mesh(
       new THREE.BoxGeometry(1.55, 0.35, 1.55),
       baseMat
@@ -621,7 +608,6 @@ function createBarSidePillars() {
     base.receiveShadow = true;
     pillar.add(base);
 
-    
     const body = new THREE.Mesh(
       new THREE.BoxGeometry(1.2, height, 1.2),
       pillarMat
@@ -631,7 +617,6 @@ function createBarSidePillars() {
     body.receiveShadow = true;
     pillar.add(body);
 
-   
     const cap = new THREE.Mesh(
       new THREE.BoxGeometry(1.3, 0.25, 1.3),
       baseMat
@@ -640,8 +625,7 @@ function createBarSidePillars() {
     cap.castShadow = true;
     pillar.add(cap);
 
-    
-    const speakerY = height * 0.62; 
+    const speakerY = height * 0.62;
 
     const speakerBox = new THREE.Mesh(
       new THREE.BoxGeometry(0.72, 1.35, 0.38),
@@ -651,7 +635,6 @@ function createBarSidePillars() {
     speakerBox.castShadow = true;
     pillar.add(speakerBox);
 
-    
     const grill = new THREE.Mesh(
       new THREE.PlaneGeometry(0.62, 1.18),
       grillMat
@@ -659,7 +642,6 @@ function createBarSidePillars() {
     grill.position.set(0, speakerY, 0.82);
     pillar.add(grill);
 
-    
     const logoPlate = new THREE.Mesh(
       new THREE.PlaneGeometry(0.38, 0.12),
       logoMat
@@ -667,7 +649,6 @@ function createBarSidePillars() {
     logoPlate.position.set(0, speakerY - 0.82, 0.62);
     pillar.add(logoPlate);
 
-   
     const strip = new THREE.Mesh(
       new THREE.BoxGeometry(0.045, height * 0.65, 0.045),
       stripMat
@@ -675,13 +656,11 @@ function createBarSidePillars() {
     strip.position.set(0.56, (height * 0.65) / 2 + 0.6, 0.56);
     pillar.add(strip);
 
-  
     const uplight = new THREE.PointLight(0xffb07a, 0.25, 7);
     uplight.position.set(0.45, 0.25, 0.45);
     uplight.castShadow = false;
     pillar.add(uplight);
 
-    
     pillar.position.set(x, 0, -2.8);
     return pillar;
   }
@@ -691,26 +670,21 @@ function createBarSidePillars() {
 
   return group;
 }
-
-
 scene.add(createBarSidePillars());
 
 function createBackBarShelf() {
   const group = new THREE.Group();
 
-  
   group.position.set(0, 0, -3.45);
 
-  // Sizes
   const W = 12.8;
   const H = 5.4;
   const depth = 0.65;
 
-  const frameT = 0.18;   
-  const dividerT = 0.08; 
-  const inset = 0.55;    
+  const frameT = 0.18;
+  const dividerT = 0.08;
+  const inset = 0.55;
 
-  
   const frameMat = new THREE.MeshStandardMaterial({
     color: 0x0c0c0c,
     roughness: 0.7,
@@ -718,7 +692,7 @@ function createBackBarShelf() {
   });
 
   const dividerMat = new THREE.MeshStandardMaterial({
-    color: 0x2a2a2a,   
+    color: 0x2a2a2a,
     roughness: 0.85,
     metalness: 0.1
   });
@@ -737,10 +711,8 @@ function createBackBarShelf() {
     metalness: 0.0
   });
 
-  
   const yMid = 3.45;
 
-  
   const leftFrame = new THREE.Mesh(
     new THREE.BoxGeometry(frameT, H, frameT),
     frameMat
@@ -753,7 +725,6 @@ function createBackBarShelf() {
   rightFrame.position.x = W / 2 - frameT / 2;
   group.add(rightFrame);
 
-  
   const topFrame = new THREE.Mesh(
     new THREE.BoxGeometry(W, frameT, frameT),
     frameMat
@@ -766,7 +737,6 @@ function createBackBarShelf() {
   bottomFrame.position.y = yMid - H / 2 + frameT / 2;
   group.add(bottomFrame);
 
-  
   const backPanel = new THREE.Mesh(
     new THREE.PlaneGeometry(W - 0.2, H - 0.2),
     backPanelMat
@@ -774,7 +744,6 @@ function createBackBarShelf() {
   backPanel.position.set(0, yMid, -depth / 2);
   group.add(backPanel);
 
-  
   const glowPanel = new THREE.Mesh(
     new THREE.PlaneGeometry(W - 1.2, H - 1.2),
     glowPanelMat
@@ -782,7 +751,6 @@ function createBackBarShelf() {
   glowPanel.position.set(0, yMid, -depth / 2 + 0.01);
   group.add(glowPanel);
 
-  
   const cols = 5;
   const rows = 3;
 
@@ -791,20 +759,18 @@ function createBackBarShelf() {
   const cellW = innerW / cols;
   const cellH = innerH / rows;
 
-  
   for (let c = 1; c < cols; c++) {
     const x = -innerW / 2 + c * cellW;
     const v = new THREE.Mesh(
       new THREE.BoxGeometry(dividerT, innerH, depth - 0.15),
       dividerMat
     );
-    v.position.set(x, yMid, -0.08); 
+    v.position.set(x, yMid, -0.08);
     v.castShadow = true;
     v.receiveShadow = true;
     group.add(v);
   }
 
-  
   for (let r = 1; r < rows; r++) {
     const y = (yMid - innerH / 2) + r * cellH;
     const h = new THREE.Mesh(
@@ -817,7 +783,6 @@ function createBackBarShelf() {
     group.add(h);
   }
 
-  
   const warm = new THREE.PointLight(0xffa86a, 0.9, 12);
   warm.position.set(-3.8, yMid + 0.7, -0.1);
   warm.castShadow = false;
@@ -829,78 +794,74 @@ function createBackBarShelf() {
 
   return group;
 }
-scene.add(createBackBarShelf())
+scene.add(createBackBarShelf());
 
+/* ---------------- CONTROLS ---------------- */
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.minDistance = 3;
+controls.maxDistance = 30;
+controls.maxPolarAngle = Math.PI / 2;
+controls.target.set(0, 2, 0);
+controls.update();
 
+/* ---------------- RAYCASTER ---------------- */
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
 
+function onMouseClick(event) {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-    
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.minDistance = 3;
-    controls.maxDistance = 30;
-    controls.maxPolarAngle = Math.PI / 2;
-    controls.target.set(0, 2, 0);
-    controls.update();
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(scene.children, true);
 
-    
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
-
-    function onMouseClick(event) {
-      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-      raycaster.setFromCamera(mouse, camera);
-      const intersects = raycaster.intersectObjects(scene.children, true);
-
-      for (let intersect of intersects) {
-        if (intersect.object.userData.clickable) {
-          showBookDetails(intersect.object.userData);
-          break;
-        }
-      }
+  for (let intersect of intersects) {
+    if (intersect.object.userData.clickable) {
+      showBookDetails(intersect.object.userData);
+      break;
     }
+  }
+}
 
-    window.addEventListener('click', onMouseClick);
+window.addEventListener('click', onMouseClick);
 
-    window.showBookDetails = function(bookData) {
-      document.getElementById('bookTitle').textContent = bookData.title;
-      document.getElementById('bookAuthor').textContent = bookData.author;
-      document.getElementById('bookPrice').textContent = bookData.price;
-      document.getElementById('bookDetails').style.display = 'block';
-    };
+window.showBookDetails = function (bookData) {
+  document.getElementById('bookTitle').textContent = bookData.title;
+  document.getElementById('bookAuthor').textContent = bookData.author;
+  document.getElementById('bookPrice').textContent = bookData.price;
+  document.getElementById('bookDetails').style.display = 'block';
+};
 
-    window.closeBookDetails = function() {
-      document.getElementById('bookDetails').style.display = 'none';
-    };
+window.closeBookDetails = function () {
+  document.getElementById('bookDetails').style.display = 'none';
+};
 
-    
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+/* ---------------- RESIZE ---------------- */
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
 
-    
-    let time = 0;
 
-    function animate() {
-      requestAnimationFrame(animate);
-      time += 0.01;
-      
-      controls.update();
-      
-      scene.children.forEach(child => {
-        if (child.children && child.children.length > 40) {
-          child.rotation.y = Math.sin(time * 0.1) * 0.02;
-        }
-      });
+let time = 0;
 
-      renderer.render(scene, camera);
+function animate() {
+  requestAnimationFrame(animate);
+  time += 0.01;
+
+  controls.update();
+
+  scene.children.forEach(child => {
+    if (child.children && child.children.length > 40) {
+      child.rotation.y = Math.sin(time * 0.1) * 0.02;
     }
-    
-    animate();
-    document.getElementById('loading').style.display = 'none';
- 
+  });
+
+  renderer.render(scene, camera);
+}
+
+animate();
+document.getElementById('loading').style.display = 'none';
