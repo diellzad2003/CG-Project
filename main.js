@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
+import { booksData } from './bookData.js';
+
 
 /* ---------------- SCENE ---------------- */
 const scene = new THREE.Scene();
@@ -42,6 +44,35 @@ new RGBELoader()
     texture.dispose();
     pmremGenerator.dispose();
   });
+
+
+  /*Books*/
+  class Book {
+  constructor(title, author, price, color = 0xffffff) {
+    this.title = title;
+    this.author = author;
+    this.price = price;
+
+  const geometry = new THREE.BoxGeometry(0.14, 0.20, 0.035);
+ // width, height, depth
+    const material = new THREE.MeshStandardMaterial({
+      color: color,
+      roughness: 0.6,
+      metalness: 0.1
+    });
+
+    this.mesh = new THREE.Mesh(geometry, material);
+    this.mesh.castShadow = true;
+    this.mesh.receiveShadow = true;
+
+    this.mesh.userData = {
+      clickable: true,
+      title: title,
+      author: author,
+      price: price
+    };
+  }
+}
 
 /* ---------------- LIGHTING ---------------- */
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -272,7 +303,6 @@ function createGLBTable(x, z, rotation = 0) {
   return group;
 }
 
-
 function createGLBBookshelf(x, z, rotation = 0) {
   const group = new THREE.Group();
 
@@ -283,7 +313,7 @@ function createGLBBookshelf(x, z, rotation = 0) {
 
       shelf.traverse((child) => {
         if (child.isMesh) {
-          const mat = new THREE.MeshStandardMaterial({
+          child.material = new THREE.MeshStandardMaterial({
             map: shelfTextures.albedo,
             normalMap: shelfTextures.normal,
             roughnessMap: shelfTextures.roughness,
@@ -291,16 +321,43 @@ function createGLBBookshelf(x, z, rotation = 0) {
             metalness: 0.0,
             color: new THREE.Color(0xd9b99b)
           });
-
-          child.material = mat;
           child.castShadow = true;
           child.receiveShadow = true;
         }
       });
 
-      shelf.scale.set(2.6, 2.6, 2.6);
+      shelf.scale.set(2, 2, 2);
+     
+
       group.add(shelf);
-      console.log("✅ Shelf loaded:", shelf);
+
+     /* 📚 ADD BOOKS */
+const rows = 3;
+const booksPerRow = 8;
+
+const shelfYStart = 0.9;     // first shelf height (local)
+const shelfGapY = 1.15;      // vertical distance between shelves
+const shelfWidth = 2.1;      // usable width of shelf
+const bookDepth = 0.18;      // how far forward books sit
+
+for (let r = 0; r < rows; r++) {
+  for (let i = 0; i < booksPerRow; i++) {
+    const data = booksData[(r * booksPerRow + i) % booksData.length];
+    const book = new Book(data.title, data.author, data.price, data.color);
+
+    const x = -shelfWidth / 2 + (i + 0.5) * (shelfWidth / booksPerRow);
+    const y = shelfYStart + r * shelfGapY;
+    const z = bookDepth;
+
+    book.mesh.position.set(x, y, z);
+
+    shelf.add(book.mesh); // ✅ IMPORTANT
+
+     book.mesh.scale.setScalar(0.7);
+  }
+}
+
+      console.log("📚 Books added to shelf");
     },
     undefined,
     (error) => console.error("❌ Shelf load error:", error)
@@ -310,6 +367,7 @@ function createGLBBookshelf(x, z, rotation = 0) {
   group.rotation.y = rotation;
   return group;
 }
+
 
 /* ---------------- ADD SHELVES ---------------- */
 scene.add(createGLBBookshelf(-15, 0, Math.PI / 2));
