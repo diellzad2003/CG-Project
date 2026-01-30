@@ -303,6 +303,180 @@ function createGLBTable(x, z, rotation = 0) {
   return group;
 }
 
+function addBooksToShelf(shelfRoot, shelfMeshOrScene, opts = {}) {
+  const {
+    rows = 3,
+    cols = 8,
+    padding = new THREE.Vector3(0.12, 0.10, 0.10),
+    frontIsMaxZ = true,
+
+   
+    yLift = 0.02,
+    rowLift = 0.12,        // EXTRA vertical lift inside each shelf band
+    yPosInCell = 0.55,     // 0 = bottom of band, 1 = top of band
+
+    
+    density = 1.0,         // 1.0 = every slot, 0.7 = some empty, 1.3 = extra books
+    extraChance = 0.55,    // chance to add a 2nd book in same slot (depth offset)
+    stackChance = 0.25,    
+
+    // sizing
+    baseScale = 2.5,
+    tilt = 0.25
+  } = opts;
+
+  shelfRoot.updateMatrixWorld(true);
+  const worldBox = new THREE.Box3().setFromObject(shelfMeshOrScene);
+
+  // Convert world box -> shelfRoot local box
+  const inv = shelfRoot.matrixWorld.clone().invert();
+  const pts = [
+    new THREE.Vector3(worldBox.min.x, worldBox.min.y, worldBox.min.z),
+    new THREE.Vector3(worldBox.min.x, worldBox.min.y, worldBox.max.z),
+    new THREE.Vector3(worldBox.min.x, worldBox.max.y, worldBox.min.z),
+    new THREE.Vector3(worldBox.min.x, worldBox.max.y, worldBox.max.z),
+    new THREE.Vector3(worldBox.max.x, worldBox.min.y, worldBox.min.z),
+    new THREE.Vector3(worldBox.max.x, worldBox.max.y, worldBox.min.z),
+    new THREE.Vector3(worldBox.max.x, worldBox.min.y, worldBox.max.z),
+    new THREE.Vector3(worldBox.max.x, worldBox.max.y, worldBox.max.z),
+  ].map(p => p.applyMatrix4(inv));
+
+  const localBox = new THREE.Box3().setFromPoints(pts);
+
+  const innerMin = localBox.min.clone().add(padding);
+  const innerMax = localBox.max.clone().sub(padding);
+
+  const innerW = innerMax.x - innerMin.x;
+  const innerH = innerMax.y - innerMin.y;
+
+  const cellW = innerW / cols;
+  const cellH = innerH / rows;
+
+  
+  const old = shelfRoot.getObjectByName("BooksGroup");
+  if (old) shelfRoot.remove(old);
+
+  const booksGroup = new THREE.Group();
+  booksGroup.name = "BooksGroup";
+  shelfRoot.add(booksGroup);
+
+  // probe for size
+  const probeData = booksData[0];
+  const probe = new Book(probeData.title, probeData.author, probeData.price, probeData.color);
+  probe.mesh.scale.setScalar(baseScale);
+  booksGroup.add(probe.mesh);
+  booksGroup.updateMatrixWorld(true);
+
+  const probeSize = new THREE.Box3().setFromObject(probe.mesh).getSize(new THREE.Vector3());
+  booksGroup.remove(probe.mesh);
+
+  const bookHalfH = probeSize.y / 2;
+  const bookHalfD = probeSize.z / 2;
+  const bookHalfW = probeSize.x / 2;
+
+  // helper to spawn one upright book
+  const spawnUpright = (data, x, y, z, scaleMul = 1.0, zJitter = 0) => {
+    const book = new Book(data.title, data.author, data.price, data.color);
+    book.mesh.scale.setScalar(baseScale * scaleMul);
+
+    book.mesh.position.set(x, y, z + zJitter);
+    book.mesh.rotation.y = (Math.random() - 0.5) * tilt;
+
+    booksGroup.add(book.mesh);
+  };
+
+  // helper to spawn a horizontal stack book
+  const spawnStack = (data, x, y, z) => {
+    const book = new Book(data.title, data.author, data.price, data.color);
+    book.mesh.scale.setScalar(baseScale * 1.05);
+
+    // lay down
+    book.mesh.rotation.z = Math.PI / 2;
+    book.mesh.rotation.y = (Math.random() - 0.5) * 0.15;
+
+    // sit on shelf band
+    book.mesh.position.set(
+      x,
+      y - bookHalfH * 0.25,
+      z
+    );
+
+    booksGroup.add(book.mesh);
+  };
+
+  
+  const baseSlots = rows * cols;
+  const extraCount = Math.max(0, Math.floor(baseSlots * (density - 1)));
+
+  let idx = 0;
+
+  for (let r = 0; r < rows; r++) {
+   
+    const yBandBottom = innerMin.y + r * cellH;
+    const yBase = yBandBottom + (yPosInCell * cellH) - (cellH / 2) + bookHalfH + yLift + rowLift;
+
+    for (let c = 0; c < cols; c++) {
+      
+      if (density < 1.0 && Math.random() > density) continue;
+
+      const data = booksData[idx % booksData.length];
+      idx++;
+
+      const x = innerMin.x + (c + 0.5) * cellW;
+
+      const zFront = frontIsMaxZ
+        ? (innerMax.z - bookHalfD - 0.02)
+        : (innerMin.z + bookHalfD + 0.02);
+
+      
+      spawnUpright(data, x, yBase, zFront, 1.0, 0);
+
+      
+      if (Math.random() < extraChance) {
+        const data2 = booksData[idx % booksData.length];
+        idx++;
+
+        const zOffset = frontIsMaxZ ? -0.06 : 0.06; 
+        const xOffset = (Math.random() - 0.5) * (bookHalfW * 0.35);
+
+        spawnUpright(data2, x + xOffset, yBase, zFront, 0.97, zOffset);
+      }
+
+      
+      if (Math.random() < stackChance) {
+        const data3 = booksData[idx % booksData.length];
+        idx++;
+
+        const xStack = x + (Math.random() - 0.5) * (cellW * 0.25);
+        const zStack = zFront + (frontIsMaxZ ? -0.03 : 0.03);
+        spawnStack(data3, xStack, yBase, zStack);
+      }
+    }
+  }
+
+  
+  for (let k = 0; k < extraCount; k++) {
+    const r = Math.floor(Math.random() * rows);
+    const c = Math.floor(Math.random() * cols);
+
+    const yBandBottom = innerMin.y + r * cellH;
+    const yBase = yBandBottom + (yPosInCell * cellH) - (cellH / 2) + bookHalfH + yLift + rowLift;
+
+    const x = innerMin.x + (c + 0.5) * cellW + (Math.random() - 0.5) * (cellW * 0.22);
+
+    const zFront = frontIsMaxZ
+      ? (innerMax.z - bookHalfD - 0.02)
+      : (innerMin.z + bookHalfD + 0.02);
+
+    const data = booksData[idx % booksData.length];
+    idx++;
+
+    const zOffset = frontIsMaxZ ? -0.08 : 0.08;
+    spawnUpright(data, x, yBase, zFront, 0.95, zOffset);
+  }
+}
+
+
 function createGLBBookshelf(x, z, rotation = 0) {
   const group = new THREE.Group();
 
@@ -326,38 +500,31 @@ function createGLBBookshelf(x, z, rotation = 0) {
         }
       });
 
+      // Scale 
       shelf.scale.set(2, 2, 2);
-     
+
+      
+      const box = new THREE.Box3().setFromObject(shelf);
+      const center = box.getCenter(new THREE.Vector3());
+
+      
+      shelf.position.x += -center.x;
+      shelf.position.z += -center.z;
+
+      
+      const box2 = new THREE.Box3().setFromObject(shelf);
+      shelf.position.y += -box2.min.y;
 
       group.add(shelf);
 
-     /* 📚 ADD BOOKS */
-const rows = 3;
-const booksPerRow = 8;
+      
+      addBooksToShelf(group, shelf, {
+        rows: 3,
+        cols: 8,
+        frontIsMaxZ: true, 
+      });
 
-const shelfYStart = 0.9;     // first shelf height (local)
-const shelfGapY = 1.15;      // vertical distance between shelves
-const shelfWidth = 2.1;      // usable width of shelf
-const bookDepth = 0.18;      // how far forward books sit
-
-for (let r = 0; r < rows; r++) {
-  for (let i = 0; i < booksPerRow; i++) {
-    const data = booksData[(r * booksPerRow + i) % booksData.length];
-    const book = new Book(data.title, data.author, data.price, data.color);
-
-    const x = -shelfWidth / 2 + (i + 0.5) * (shelfWidth / booksPerRow);
-    const y = shelfYStart + r * shelfGapY;
-    const z = bookDepth;
-
-    book.mesh.position.set(x, y, z);
-
-    shelf.add(book.mesh); // ✅ IMPORTANT
-
-     book.mesh.scale.setScalar(0.7);
-  }
-}
-
-      console.log("📚 Books added to shelf");
+      console.log("📚 Books added inside shelf");
     },
     undefined,
     (error) => console.error("❌ Shelf load error:", error)
@@ -370,8 +537,9 @@ for (let r = 0; r < rows; r++) {
 
 
 /* ---------------- ADD SHELVES ---------------- */
-scene.add(createGLBBookshelf(-15, 0, Math.PI / 2));
-scene.add(createGLBBookshelf(-15, 8, Math.PI / 2));
+scene.add(createGLBBookshelf(-13.8, 0, Math.PI / 2));
+scene.add(createGLBBookshelf(-13.8, 8, Math.PI / 2));
+
 
 /* ---------------- CAFÉ COUNTER ---------------- */
 function createCafeCounter() {
