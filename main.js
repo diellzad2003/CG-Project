@@ -1085,16 +1085,73 @@ function onMouseClick(event) {
 
 window.addEventListener('click', onMouseClick);
 
+/* ---------------- UPDATED BOOK MODAL FUNCTIONS ---------------- */
+
+function colorToGradient(color) {
+
+  const threeColor = typeof color === 'number' ? new THREE.Color(color) : color;
+  
+  // Get RGB values
+  const r = Math.floor(threeColor.r * 255);
+  const g = Math.floor(threeColor.g * 255);
+  const b = Math.floor(threeColor.b * 255);
+  
+  // Create darker variations for gradient
+  const dark1 = `rgb(${Math.floor(r * 0.6)}, ${Math.floor(g * 0.6)}, ${Math.floor(b * 0.6)})`;
+  const dark2 = `rgb(${Math.floor(r * 0.3)}, ${Math.floor(g * 0.3)}, ${Math.floor(b * 0.3)})`;
+  
+  return `linear-gradient(135deg, rgb(${r}, ${g}, ${b}) 0%, ${dark1} 50%, ${dark2} 100%)`;
+}
+
 window.showBookDetails = function (bookData) {
+  // Update book cover (left side)
+  document.getElementById('bookCoverTitle').textContent = bookData.title;
+  document.getElementById('bookCoverAuthor').textContent = bookData.author;
+  
+  // Update cover color based on book color
+  const coverArt = document.querySelector('.book-cover-art');
+  if (bookData.color) {
+    coverArt.style.background = colorToGradient(bookData.color);
+  }
+  
+  // Update details panel (right side)
   document.getElementById('bookTitle').textContent = bookData.title;
   document.getElementById('bookAuthor').textContent = bookData.author;
-  document.getElementById('bookPrice').textContent = bookData.price;
-  document.getElementById('bookDetails').style.display = 'block';
+  document.getElementById('detailsPrice').textContent = bookData.price;
+  
+  // Show modal with animation
+  const modal = document.getElementById('bookDetails');
+  const backdrop = document.getElementById('bookDetails-backdrop');
+  
+  modal.style.display = 'block';
+  backdrop.classList.add('show');
+  
+  // Trigger animation after display is set
+  setTimeout(() => {
+    modal.classList.add('show');
+  }, 10);
 };
 
 window.closeBookDetails = function () {
-  document.getElementById('bookDetails').style.display = 'none';
+  const modal = document.getElementById('bookDetails');
+  const backdrop = document.getElementById('bookDetails-backdrop');
+  
+  // Remove show classes for animation
+  modal.classList.remove('show');
+  backdrop.classList.remove('show');
+  
+  // Hide after animation completes
+  setTimeout(() => {
+    modal.style.display = 'none';
+  }, 400);
 };
+
+// Close on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeBookDetails();
+  }
+});
 
 /* ---------------- RESIZE ---------------- */
 window.addEventListener('resize', () => {
