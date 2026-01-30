@@ -135,7 +135,7 @@ leftWall.receiveShadow = true;
 scene.add(leftWall);
 
 /* ---------------- RIGHT WALL ---------------- */
-const rightWallTexture = texLoader.load('/textures/wall/window.jpg'); // your class wall texture
+const rightWallTexture = texLoader.load('/textures/wall/window.jpg'); 
 rightWallTexture.wrapS = rightWallTexture.wrapT = THREE.RepeatWrapping;
 rightWallTexture.repeat.set(1, 1);
 
@@ -151,86 +151,84 @@ rightWall.rotation.y = -Math.PI / 2; // rotate to face inward
 rightWall.receiveShadow = true;
 scene.add(rightWall);
 
-/* ---------------- CEILING ---------------- */
-const ceiling = new THREE.Mesh(
-  new THREE.PlaneGeometry(30, 20),
+const ceilingWall = new THREE.Mesh(
+  new THREE.PlaneGeometry(30, 20), // width x depth
   new THREE.MeshStandardMaterial({
-    color: 0x0a0a0a,
+    color: 0x0a0a0a, // solid black
     roughness: 0.9,
-    side: THREE.DoubleSide
+    metalness: 0.1,
+    side: THREE.FrontSide
   })
 );
-ceiling.position.set(0, 10, 6);
-ceiling.rotation.x = Math.PI / 2;
-scene.add(ceiling);
+ceilingWall.position.set(0, 10, 6); // ceiling height
+ceilingWall.rotation.x = Math.PI / 2; // make it horizontal
+scene.add(ceilingWall);
 
-/* ---------------- CEILING INSTALLATION ---------------- */
-function createCeilingInstallation() {
+
+/* ---------------- HANGING PLANKS ---------------- */
+function createHangingPlanks() {
   const group = new THREE.Group();
-  const woodMaterial = new THREE.MeshStandardMaterial({
-    color: 0x8b6f47,
+
+
+  const plankMaterial = new THREE.MeshStandardMaterial({
+    color: 0xf5e0c3,  // light wood
     roughness: 0.7,
-    metalness: 0.1
+    metalness: 0.05
   });
 
-  const numLines = 50;
-  const spacing = 1.0;
-  const coverageWidth = 50;
 
-  for (let i = 0; i < numLines; i++) {
-    const length = 0.8 + Math.random() * 2.0;
-    const xPos = -coverageWidth / 2 + (i * spacing);
+  const plankCountX = 20;   // number along X
+  const plankCountZ = 5;    // along Z (depth)
+  const plankWidth = 0.3;   // wider planks
+  const plankDepth = 0.2;
+  const plankLengthMin = 1.5; // shorter planks
+  const plankLengthMax = 3.0; 
+  const ceilingY = 10;
 
-    const slat = new THREE.Mesh(
-      new THREE.BoxGeometry(0.25, length, 0.25),
-      woodMaterial
-    );
 
-    slat.position.set(xPos, 10 - length / 2, 0);
-    slat.castShadow = true;
-    group.add(slat);
+  for (let i = 0; i < plankCountX; i++) {
+    for (let j = 0; j < plankCountZ; j++) {
+      const plankLength = plankLengthMin + Math.random() * (plankLengthMax - plankLengthMin);
+
+
+      const plank = new THREE.Mesh(
+        new THREE.BoxGeometry(plankWidth, plankLength, plankDepth),
+        plankMaterial
+      );
+
+
+      const startX = -15;
+      const startZ = 0;
+
+
+      plank.position.set(
+        startX + i * 1.5 + (Math.random() - 0.5) * 0.5, // jitter X
+        ceilingY - plankLength / 2,                      // hang down from ceiling
+        startZ + j * 3 + (Math.random() - 0.5) * 1.0    // jitter Z
+      );
+
+
+      plank.castShadow = true;
+      plank.receiveShadow = true;
+
+
+      
+      const light = new THREE.PointLight(0xffddaa, 0.6, 5);
+      light.position.set(plank.position.x, ceilingY + 0.1, plank.position.z);
+      group.add(light);
+
+
+      group.add(plank);
+    }
   }
 
-  for (let i = 0; i < 25; i++) {
-    const length = 0.9 + Math.random() * 1.8;
-    const xPos = -coverageWidth / 2 + (i * spacing * 2);
-    const zOffset = 5 + Math.random() * 5;
-
-    const slat = new THREE.Mesh(
-      new THREE.BoxGeometry(0.25, length, 0.25),
-      woodMaterial
-    );
-
-    slat.position.set(xPos, 10 - length / 2, zOffset);
-    slat.castShadow = true;
-    group.add(slat);
-
-    const slat2 = new THREE.Mesh(
-      new THREE.BoxGeometry(0.25, length, 0.25),
-      woodMaterial
-    );
-
-    slat2.position.set(xPos, 10 - length / 2, -zOffset);
-    slat2.castShadow = true;
-    group.add(slat2);
-  }
-
-  for (let i = 0; i < 6; i++) {
-    const xPos = -20 + (i * 8);
-    const zPos = -10 + Math.random() * 20;
-
-    const ceilingSpotlight = new THREE.SpotLight(0xffcc88, 1.5, 15, Math.PI / 8, 0.5);
-    ceilingSpotlight.position.set(xPos, 10, zPos);
-    ceilingSpotlight.target.position.set(xPos, 0, zPos);
-    ceilingSpotlight.castShadow = true;
-
-    group.add(ceilingSpotlight);
-    group.add(ceilingSpotlight.target);
-  }
 
   return group;
 }
-scene.add(createCeilingInstallation());
+
+
+scene.add(createHangingPlanks());
+
 
 /* ---------------- SHELF TEXTURES ---------------- */
 const shelfTextures = {
