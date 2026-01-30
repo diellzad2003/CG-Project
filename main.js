@@ -244,43 +244,36 @@ shelfTextures.albedo.colorSpace = THREE.SRGBColorSpace;
 /* ---------------- GLB TABLE (NEW) ---------------- */
 function createGLBTable(x, z, rotation = 0) {
   const group = new THREE.Group();
+  group.userData.tableTopY = 0.55; // height where objects should sit
 
-  gltfLoader.load(
-    '/models/tables/uploads_files_3745265_Table.glb',
-    (gltf) => {
-      const table = gltf.scene;
+  gltfLoader.load('/models/tables/uploads_files_3745265_Table.glb', (gltf) => {
+    const table = gltf.scene;
 
-      table.traverse((child) => {
-        if (child.isMesh) {
-          child.castShadow = true;
-          child.receiveShadow = true;
+    table.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        child.material = new THREE.MeshStandardMaterial({
+          color: 0x050505,
+          roughness: 0.6,
+          metalness: 0.2
+        });
+      }
+    });
 
-          // black table
-          child.material = new THREE.MeshStandardMaterial({
-            color: 0x050505,
-            roughness: 0.6,
-            metalness: 0.2
-          });
-        }
-      });
+    table.scale.set(1.2, 1.35, 1.2);
 
-      
-      table.scale.set(1.2, 1.35, 1.2);
+    const box = new THREE.Box3().setFromObject(table);
+    table.position.y -= box.min.y;
 
-      // snap to floor
-      const box = new THREE.Box3().setFromObject(table);
-      table.position.y -= box.min.y;
-
-      group.add(table);
-    },
-    undefined,
-    (error) => console.error('❌ Table load error:', error)
-  );
+    group.add(table);
+  });
 
   group.position.set(x, 0, z);
   group.rotation.y = rotation;
   return group;
 }
+
 
 function createGLBBookshelf(x, z, rotation = 0) {
   const group = new THREE.Group();
@@ -441,51 +434,83 @@ function createGLBChair(x, z, rotation = 0, color = null) {
   return group;
 }
 
+function addChairToTable(tableGroup, offsetZ, rotationY, color = null) {
+  gltfLoader.load('/models/chair/chair.glb', (gltf) => {
+    const chair = gltf.scene;
+
+    chair.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+
+        if (color !== null) {
+          child.material = new THREE.MeshStandardMaterial({
+            color: new THREE.Color(color),
+            roughness: 0.7,
+            metalness: 0.2
+          });
+        }
+      }
+    });
+
+    chair.scale.set(2.2, 2.2, 2.2);
+
+    const box = new THREE.Box3().setFromObject(chair);
+    chair.position.y -= box.min.y;
+
+    chair.position.z = offsetZ;    
+    chair.rotation.y = rotationY;
+
+    tableGroup.add(chair);
+  });
+}
+
+
 /* ---------------- SEATING: ONE TABLE PER CHAIR ---------------- */
 function createCafeSeatingClustersDispersed() {
   const group = new THREE.Group();
 
-  const clusterCenters = [
-    { x: -11, z: 3 },
-    { x: -5,  z: 4 },
-    { x: -7,  z: 1 },
-    { x: -2,  z: 8 },
-    { x: 0,   z: 3 },
-    { x: 2,   z: 6 },
-    { x: 12,  z: 5.5 },
-    { x: 7,   z: 2.5 },
-    { x: 10,  z: 3.5 }
-  ];
+ const clusterCenters = [
+ 
+  { x: -12, z: 2 },
+  { x: -12, z: 6 },
+
+
+  { x: -7, z: 3 },
+  { x: -7, z: 8 },
+
+ 
+  { x: -1, z: 4 },
+  { x: -1, z: 9 },
+
+ 
+  { x: 6, z: 3 },
+  { x: 6, z: 8 },
+
+ 
+  { x: 12, z: 5 }
+];
 
   clusterCenters.forEach(center => {
     const offsetX = (Math.random() - 0.5) * 1.5;
     const offsetZ = (Math.random() - 0.5) * 1.0;
 
-    const baseX = center.x + offsetX;
-    const baseZ = center.z + offsetZ;
+    const x = center.x + offsetX;
+    const z = center.z + offsetZ;
 
-    // spacing between the two chair+table pairs
-    const pairOffset = 1.35;
+    const tableRotation = Math.random() * Math.PI * 2;
 
-   
-    const table1X = baseX - pairOffset;
-    const table1Z = baseZ;
-    const rot1 = Math.random() * Math.PI * 2;
+    const table = createGLBTable(x, z, tableRotation);
+    group.add(table);
 
-    group.add(createGLBTable(table1X, table1Z, rot1));
-    group.add(createGLBChair(table1X, table1Z + 0.9, Math.PI)); // original gray
+    addChairToTable(table, 1.0, Math.PI);
 
-    // --------- Pair 2: Pink chair + its own table ----------
-    const table2X = baseX + pairOffset;
-    const table2Z = baseZ;
-    const rot2 = Math.random() * Math.PI * 2;
-
-    group.add(createGLBTable(table2X, table2Z, rot2));
-    group.add(createGLBChair(table2X, table2Z - 0.9, 0, 0xffc0cb)); // pink
+    addChairToTable(table, -1.0, 0, 0xffc0cb);
   });
 
   return group;
 }
+
 
 scene.add(createCafeSeatingClustersDispersed());
 
