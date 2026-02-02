@@ -540,6 +540,51 @@ function createGLBBookshelf(x, z, rotation = 0) {
 scene.add(createGLBBookshelf(-13.8, 0, Math.PI / 2));
 scene.add(createGLBBookshelf(-13.8, 8, Math.PI / 2));
 
+function addPendantHanging(counterGroup, lampShade, opts = {}) {
+  const {
+    ceilingY = 10,      // your ceiling plane is at y=10
+    cordRadius = 0.02,
+    capRadius = 0.10,
+    capHeight = 0.06,
+    cordColor = 0x111111,
+    capColor = 0x2a2a2a,
+  } = opts;
+
+  // World position of lamp
+  const lampWorld = new THREE.Vector3();
+  lampShade.getWorldPosition(lampWorld);
+
+  // Convert that to counterGroup local space
+  const lampLocal = counterGroup.worldToLocal(lampWorld.clone());
+
+  // Where the cable starts (just below ceiling)
+  const topY = ceilingY - 0.05;
+  const bottomY = lampLocal.y + 0.15; // end slightly above shade
+
+  const cordLen = Math.max(0.05, topY - bottomY);
+
+  // Cord
+  const cord = new THREE.Mesh(
+    new THREE.CylinderGeometry(cordRadius, cordRadius, cordLen, 10),
+    new THREE.MeshStandardMaterial({ color: cordColor, roughness: 0.9, metalness: 0.1 })
+  );
+
+  cord.position.set(lampLocal.x, bottomY + cordLen / 2, lampLocal.z);
+  cord.castShadow = true;
+  counterGroup.add(cord);
+
+  // Ceiling cap
+  const cap = new THREE.Mesh(
+    new THREE.CylinderGeometry(capRadius, capRadius * 0.9, capHeight, 14),
+    new THREE.MeshStandardMaterial({ color: capColor, roughness: 0.6, metalness: 0.25 })
+  );
+
+  cap.position.set(lampLocal.x, topY - capHeight / 2, lampLocal.z);
+  cap.castShadow = true;
+  cap.receiveShadow = true;
+  counterGroup.add(cap);
+}
+
 
 /* ---------------- CAFÉ COUNTER ---------------- */
 function createCafeCounter() {
@@ -571,58 +616,51 @@ function createCafeCounter() {
   counterTop.receiveShadow = true;
   counterGroup.add(counterTop);
 
-  for (let i = 0; i < 3; i++) {
-    const shelf = new THREE.Mesh(
-      new THREE.BoxGeometry(5, 0.1, 0.4),
-      new THREE.MeshStandardMaterial({
-        color: 0xc9a870,
-        roughness: 0.6
-      })
-    );
-    shelf.position.set(0, 2.5 + i * 0.8, -0.8);
-    shelf.castShadow = true;
-    counterGroup.add(shelf);
+  // // for (let i = 0; i < 3; i++) {
+  // //   const shelf = new THREE.Mesh(
+  // //     new THREE.BoxGeometry(5, 0.1, 0.4),
+  // //     new THREE.MeshStandardMaterial({
+  // //       color: 0xc9a870,
+  // //       roughness: 0.6
+  // //     })
+  // //   );
+  // //   shelf.position.set(0, 2.5 + i * 0.8, -0.8);
+  // //   shelf.castShadow = true;
+  // //   counterGroup.add(shelf);
 
-    for (let j = 0; j < 5; j++) {
-      const item = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.08, 0.08, 0.4),
-        new THREE.MeshStandardMaterial({
-          color: [0x8b4513, 0x2f4f2f, 0x4a4a4a][Math.floor(Math.random() * 3)],
-          roughness: 0.3,
-          metalness: 0.5
-        })
-      );
-      item.position.set(-2 + j * 1, 2.7 + i * 0.8, -0.8);
-      item.castShadow = true;
-      counterGroup.add(item);
-    }
-  }
+    
+  // }
 
   for (let i = 0; i < 3; i++) {
-    const lampShade = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.3, 0.4, 0.3, 8),
-      new THREE.MeshStandardMaterial({
-        color: 0xff8844,
-        emissive: 0xff6622,
-        emissiveIntensity: 0.5,
-        roughness: 0.4
-      })
-    );
-    lampShade.position.set(-2 + i * 2, 4.2, 0);
-    counterGroup.add(lampShade);
+  const lampShade = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.3, 0.4, 0.3, 8),
+    new THREE.MeshStandardMaterial({
+      color: 0xff8844,
+      emissive: 0xff6622,
+      emissiveIntensity: 0.5,
+      roughness: 0.4
+    })
+  );
 
-    const light = new THREE.PointLight(0xffaa66, 0.8, 8);
-    light.position.set(-2 + i * 2, 4, 0);
-    light.castShadow = true;
-    counterGroup.add(light);
-  }
+  lampShade.position.set(-2 + i * 2, 4.2, 0);
+  counterGroup.add(lampShade);
+
+  // add hanging cord + ceiling cap
+  addPendantHanging(counterGroup, lampShade, { ceilingY: 10 });
+
+  const light = new THREE.PointLight(0xffaa66, 0.8, 8);
+  light.position.set(-2 + i * 2, 4, 0);
+  light.castShadow = true;
+  counterGroup.add(light);
+}
+
 
   counterGroup.position.set(0, 0, 0);
   return counterGroup;
 }
 scene.add(createCafeCounter());
 
-/* ---------------- CHAIRS (UNCHANGED) ---------------- */
+
 function createGLBChair(x, z, rotation = 0, color = null) {
   const group = new THREE.Group();
 
@@ -739,29 +777,29 @@ function createCafeSeatingClustersDispersed() {
 scene.add(createCafeSeatingClustersDispersed());
 
 /* ---------------- NEON SIGN ---------------- */
-function createNeonSign() {
-  const neonGroup = new THREE.Group();
+// function createNeonSign() {
+//   const neonGroup = new THREE.Group();
 
-  const panel = new THREE.Mesh(
-    new THREE.BoxGeometry(4, 1.5, 0.1),
-    new THREE.MeshStandardMaterial({
-      color: 0xff0000,
-      emissive: 0xff0000,
-      emissiveIntensity: 1.5,
-      roughness: 0.2
-    })
-  );
-  panel.position.set(0, 0, 0);
-  neonGroup.add(panel);
+//   // //const panel = new THREE.Mesh(
+//   //   new THREE.BoxGeometry(4, 1.5, 0.1),
+//   //   new THREE.MeshStandardMaterial({
+//   //     color: 0xff0000,
+//   //     emissive: 0xff0000,
+//   //     emissiveIntensity: 1.5,
+//   //     roughness: 0.2
+//   //   })
+//   // );
+//   // panel.position.set(0, 0, 0);
+//   // neonGroup.add(panel);
 
-  const glowLight = new THREE.PointLight(0xff0000, 2, 10);
-  glowLight.position.set(0, 0, 0.5);
-  neonGroup.add(glowLight);
+//   const glowLight = new THREE.PointLight(0xff0000, 2, 10);
+//   glowLight.position.set(0, 0, 0.5);
+//   neonGroup.add(glowLight);
 
-  neonGroup.position.set(0, 3, -1.5);
-  return neonGroup;
-}
-scene.add(createNeonSign());
+//   neonGroup.position.set(0, 3, -1.5);
+//   return neonGroup;
+// }
+// scene.add(createNeonSign());
 
 /* ---------------- GLASS DISPLAY CASE ---------------- */
 function createDisplayCase(x, z) {
@@ -930,6 +968,85 @@ function createBarSidePillars() {
 }
 scene.add(createBarSidePillars());
 
+function addGlassesToBackBarShelf(group, cfg = {}) {
+  const {
+    W = 12.8,
+    H = 5.4,
+    depth = 0.65,
+    inset = 0.55,
+    cols = 5,
+    rows = 3,
+    yMid = 3.45,
+
+    // where inside depth to place them
+    zInside = -0.05,
+
+    // padding from compartment bottom
+    floorPad = 0.10,
+  } = cfg;
+
+  const innerW = W - inset * 2;
+  const innerH = H - inset * 2;
+
+  const cellW = innerW / cols;
+  const cellH = innerH / rows;
+
+  const colors = [0x8b4513, 0x2f4f2f, 0x4a4a4a, 0x6b1d1d, 0x1f3a5f];
+
+  const makeMat = (c) =>
+    new THREE.MeshStandardMaterial({
+      color: c,
+      roughness: 0.35,
+      metalness: 0.35
+    });
+
+  
+  const old = group.getObjectByName("BackBarGlasses");
+  if (old) group.remove(old);
+
+  const bottlesGroup = new THREE.Group();
+  bottlesGroup.name = "BackBarGlasses";
+  group.add(bottlesGroup);
+
+  const innerBottomY = yMid - innerH / 2;
+
+  for (let r = 0; r < rows; r++) {
+    // bottom of THIS compartment
+    const compartmentBottomY = innerBottomY + r * cellH;
+    // max height allowed in this compartment (so it can’t cross top)
+    const maxH = cellH - (floorPad * 2);
+
+    for (let c = 0; c < cols; c++) {
+      const xCenter = (-innerW / 2) + (c + 0.5) * cellW;
+
+      const count = Math.random() < 0.65 ? 1 : 2;
+
+      for (let k = 0; k < count; k++) {
+        // Clamp bottle height so it always fits
+        const h = Math.min(0.55, Math.max(0.25, 0.32 + Math.random() * 0.45), maxH);
+        const radius = 0.07 + Math.random() * 0.03;
+
+        const bottle = new THREE.Mesh(
+          new THREE.CylinderGeometry(radius, radius, h, 16),
+          makeMat(colors[Math.floor(Math.random() * colors.length)])
+        );
+
+        bottle.position.set(
+          xCenter + (Math.random() - 0.5) * (cellW * 0.35),
+          compartmentBottomY + floorPad + h / 2,
+          zInside + (Math.random() - 0.5) * 0.08
+        );
+
+        bottle.rotation.y = (Math.random() - 0.5) * 0.6;
+        bottle.castShadow = true;
+        bottle.receiveShadow = true;
+
+        bottlesGroup.add(bottle);
+      }
+    }
+  }
+}
+
 function createBackBarShelf() {
   const group = new THREE.Group();
 
@@ -1049,6 +1166,7 @@ function createBackBarShelf() {
   const warm2 = warm.clone();
   warm2.position.x = 3.8;
   group.add(warm2);
+  addGlassesToBackBarShelf(group);
 
   return group;
 }
