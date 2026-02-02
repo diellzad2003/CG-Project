@@ -1278,23 +1278,49 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+// ----- CAMERA MOVEMENT VARIABLES -----
+const keys = {};
+document.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
+document.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
 
-let time = 0;
+function moveCamera() {
+  const speed = 0.1;
 
-function animate() {
-  requestAnimationFrame(animate);
-  time += 0.01;
+  const forward = new THREE.Vector3();
+  camera.getWorldDirection(forward);
+  forward.y = 0;
+  forward.normalize();
+
+  const right = new THREE.Vector3();
+  right.crossVectors(forward, camera.up).normalize();
+
+  if (keys['w']) {
+    camera.position.add(forward.clone().multiplyScalar(speed));
+    controls.target.add(forward.clone().multiplyScalar(speed));
+  }
+  if (keys['s']) {
+    camera.position.add(forward.clone().multiplyScalar(-speed));
+    controls.target.add(forward.clone().multiplyScalar(-speed));
+  }
+  if (keys['a']) {
+    camera.position.add(right.clone().multiplyScalar(-speed));
+    controls.target.add(right.clone().multiplyScalar(-speed));
+  }
+  if (keys['d']) {
+    camera.position.add(right.clone().multiplyScalar(speed));
+    controls.target.add(right.clone().multiplyScalar(speed));
+  }
 
   controls.update();
-
-  scene.children.forEach(child => {
-    if (child.children && child.children.length > 40) {
-      child.rotation.y = Math.sin(time * 0.1) * 0.02;
-    }
-  });
-
-  renderer.render(scene, camera);
 }
 
+// Animatation
+function animate() {
+  requestAnimationFrame(animate);
+  moveCamera();
+  renderer.render(scene, camera);
+}
 animate();
+
+
 document.getElementById('loading').style.display = 'none';
