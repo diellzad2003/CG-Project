@@ -196,6 +196,64 @@ ceilingWall.rotation.x = Math.PI / 2; // make it horizontal
 scene.add(ceilingWall);
 
 
+/*------------Adding Literatura.mk Sign-------------*/ 
+
+function createWallSign() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const circleRadius = 200;
+  ctx.fillStyle = 'black';
+  ctx.beginPath();
+  ctx.arc(canvas.width / 2, canvas.height / 2, circleRadius, 0, Math.PI * 2);
+  ctx.fill();
+
+ 
+  ctx.fillStyle = 'white';
+  ctx.font = 'bold 50px Arial';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Cafe', canvas.width / 2, canvas.height / 2 - 40);
+
+  
+  const rectWidth = 500;
+  const rectHeight = 80;
+  ctx.fillStyle = 'red';
+  ctx.fillRect(
+    canvas.width / 2 - rectWidth / 2,
+    canvas.height / 2 + 20 - rectHeight / 2,
+    rectWidth,
+    rectHeight
+  );
+
+
+  ctx.fillStyle = 'white';
+  ctx.font = 'bold 60px Arial'; 
+  ctx.fillText('Literatura.mk', canvas.width / 2, canvas.height / 2 + 20);
+
+ 
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+
+ 
+  const material = new THREE.MeshStandardMaterial({ map: texture, transparent: true });
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 2.5), material);
+
+  
+  plane.position.set(15 - 0.01, 5, 6);
+  plane.rotation.y = -Math.PI / 2;
+
+  return plane;
+}
+
+scene.add(createWallSign());
+
+
+
+
 /* ---------------- HANGING PLANKS ---------------- */
 function createHangingPlanks() {
   const group = new THREE.Group();
