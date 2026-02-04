@@ -1389,13 +1389,28 @@ function moveCamera() {
   controls.update();
 }
 
-// Animatation
+const hangingPlanksGroup = createHangingPlanks();
+scene.add(hangingPlanksGroup);
+
+
 function animate() {
   requestAnimationFrame(animate);
   moveCamera();
+
+  const time = Date.now() * 0.001;
+
+  // Hanging plank sway
+  hangingPlanksGroup.children.forEach((plank, index) => {
+    if (plank.isMesh) {
+      const swayAmplitude = 0.01;
+      const swaySpeed = 0.2 + index * 0.05;
+      plank.rotation.z = Math.sin(time * swaySpeed) * swayAmplitude;
+    }
+  });
+
+
   renderer.render(scene, camera);
 }
+
 animate();
-
-
 document.getElementById('loading').style.display = 'none';
