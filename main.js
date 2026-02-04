@@ -11,7 +11,7 @@ scene.background = new THREE.Color(0x1a1a1a);
 scene.fog = new THREE.Fog(0x1a1a1a, 25, 60);
 
 /* ---------------- CAMERA ---------------- */
-const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 200);
+const camera = new THREE.PerspectiveCamera(100, window.innerWidth / window.innerHeight, 0.1, 200);
 camera.position.set(0, 3, 12);
 
 /* ---------------- RENDERER ---------------- */
@@ -105,6 +105,8 @@ scene.add(cafeLight);
 const fillLight = new THREE.PointLight(0xffffff, 1.2, 20);
 fillLight.position.set(0, 4, 10);
 scene.add(fillLight);
+
+
 /* ---------------- FLOOR  ---------------- */
 
 
@@ -125,24 +127,26 @@ const floorMaterial = new THREE.MeshStandardMaterial({
 });
 
 
-// Create a flat plane for the floor
+const roomWidth = 22;   
+const roomDepth = 20;  
+
 const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(30, 30), // width x height
+  new THREE.PlaneGeometry(roomWidth, roomDepth),
   floorMaterial
 );
 
-// Rotate to lie flat on the XZ plane
 floor.rotation.x = -Math.PI / 2;
-floor.position.set(0, 0, 6); // adjust Z if needed
-floor.receiveShadow = true;
 
+floor.position.set(0, 0, 6); 
+floor.receiveShadow = true;
 scene.add(floor);
+
 
 
 
 /* ---------------- BACK WALL ---------------- */
 const backWall = new THREE.Mesh(
-  new THREE.PlaneGeometry(30, 10), // width, height
+  new THREE.PlaneGeometry(22, 10), // width, height
   new THREE.MeshStandardMaterial({
     color: 0xd9b99b,
     roughness: 0.8
@@ -160,7 +164,7 @@ const leftWall = new THREE.Mesh(
     roughness: 0.8
   })
 );
-leftWall.position.set(-15, 5, 6); // left side
+leftWall.position.set(-11, 5, 6); // left side
 leftWall.rotation.y = Math.PI / 2; // rotate to face inward
 leftWall.receiveShadow = true;
 scene.add(leftWall);
@@ -168,7 +172,7 @@ scene.add(leftWall);
 /* ---------------- RIGHT WALL ---------------- */
 const rightWallTexture = texLoader.load('/textures/wall/window.jpg'); 
 rightWallTexture.wrapS = rightWallTexture.wrapT = THREE.RepeatWrapping;
-rightWallTexture.repeat.set(1, 1);
+rightWallTexture.repeat.set(2,2);
 
 const rightWall = new THREE.Mesh(
   new THREE.PlaneGeometry(20, 10),
@@ -177,13 +181,13 @@ const rightWall = new THREE.Mesh(
     roughness: 0.8
   })
 );
-rightWall.position.set(15, 5, 6); // right side
+rightWall.position.set(11, 5, 6); // right side
 rightWall.rotation.y = -Math.PI / 2; // rotate to face inward
 rightWall.receiveShadow = true;
 scene.add(rightWall);
 
 const ceilingWall = new THREE.Mesh(
-  new THREE.PlaneGeometry(30, 20), // width x depth
+  new THREE.PlaneGeometry(22, 20), // width x depth
   new THREE.MeshStandardMaterial({
     color: 0x0a0a0a, // solid black
     roughness: 0.9,
@@ -194,6 +198,8 @@ const ceilingWall = new THREE.Mesh(
 ceilingWall.position.set(0, 10, 6); // ceiling height
 ceilingWall.rotation.x = Math.PI / 2; // make it horizontal
 scene.add(ceilingWall);
+
+
 
 
 /*------------Adding Literatura.mk Sign-------------*/ 
@@ -243,7 +249,7 @@ function createWallSign() {
   const plane = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 2.5), material);
 
   
-  plane.position.set(15 - 0.01, 5, 6);
+  plane.position.set(11 - 0.01, 5, 6);
   plane.rotation.y = -Math.PI / 2;
 
   return plane;
@@ -251,6 +257,23 @@ function createWallSign() {
 
 scene.add(createWallSign());
 
+
+function addCeilingTrim() {
+  const trimMat = new THREE.MeshStandardMaterial({ color: 0xcaa27f });
+
+  const trim1 = new THREE.Mesh(new THREE.BoxGeometry(22, 0.3, 0.3), trimMat);
+  trim1.position.set(0, 9.85, -4);
+
+  const trim2 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 20), trimMat);
+  trim2.position.set(-11, 9.85, 6);
+
+  const trim3 = trim2.clone();
+  trim3.position.x = 11;
+
+  scene.add(trim1, trim2, trim3);
+}
+
+addCeilingTrim();
 
 
 
@@ -266,7 +289,7 @@ function createHangingPlanks() {
   });
 
 
-  const plankCountX = 20;   // number along X
+  const plankCountX = 16;   // number along X
   const plankCountZ = 5;    // along Z (depth)
   const plankWidth = 0.3;   // wider planks
   const plankDepth = 0.2;
@@ -286,7 +309,7 @@ function createHangingPlanks() {
       );
 
 
-      const startX = -15;
+      const startX = -11;
       const startZ = 0;
 
 
@@ -595,8 +618,9 @@ function createGLBBookshelf(x, z, rotation = 0) {
 
 
 /* ---------------- ADD SHELVES ---------------- */
-scene.add(createGLBBookshelf(-13.8, 0, Math.PI / 2));
-scene.add(createGLBBookshelf(-13.8, 8, Math.PI / 2));
+scene.add(createGLBBookshelf(-10.5, 0, Math.PI / 2));
+scene.add(createGLBBookshelf(-10.5, 4, Math.PI / 2));
+scene.add(createGLBBookshelf(-10.5, 8, Math.PI / 2));
 
 function addPendantHanging(counterGroup, lampShade, opts = {}) {
   const {
@@ -789,27 +813,20 @@ function addChairToTable(tableGroup, offsetZ, rotationY, color = null) {
 /* ---------------- SEATING: ONE TABLE PER CHAIR ---------------- */
 function createCafeSeatingClustersDispersed() {
   const group = new THREE.Group();
+const clusterCenters = [
+  { x: -6, z: 3 },
+  { x: -6, z: 8 },
 
- const clusterCenters = [
- 
-  { x: -12, z: 2 },
-  { x: -12, z: 6 },
-
-
-  { x: -7, z: 3 },
-  { x: -7, z: 8 },
-
- 
   { x: -1, z: 4 },
   { x: -1, z: 9 },
 
- 
-  { x: 6, z: 3 },
-  { x: 6, z: 8 },
+  { x: 4, z: 3 },
+  { x: 4, z: 8 },
 
- 
-  { x: 12, z: 5 }
+    { x: 8, z: 4 },
+  { x: 8, z: 8 }
 ];
+
 
   clusterCenters.forEach(center => {
     const offsetX = (Math.random() - 0.5) * 1.5;
@@ -947,7 +964,7 @@ function createBarSidePillars() {
     metalness: 0.1
   });
 
-  const height = 9.0;
+  const height = 9.5;
   const yCenter = height / 2;
 
   function makeOnePillar(x) {
