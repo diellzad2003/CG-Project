@@ -342,13 +342,22 @@ function createHangingPlanks() {
 scene.add(createHangingPlanks());
 
 
+
 /* ---------------- SHELF TEXTURES ---------------- */
 const shelfTextures = {
   albedo: texLoader.load('/models/shelves/shelves_model/texture/SchoolBagShelves_Albedo.png'),
   roughness: texLoader.load('/models/shelves/shelves_model/texture/SchoolBagShelves_Roughness.png'),
   normal: texLoader.load('/models/shelves/shelves_model/texture/SchoolBagShelves_normals(opengl).png')
 };
-shelfTextures.albedo.colorSpace = THREE.SRGBColorSpace;
+
+// ✅ correct color spacesshelfTextures.albedo.colorSpace = THREE.SRGBColorSpace;
+shelfTextures.roughness.colorSpace = THREE.NoColorSpace;
+shelfTextures.normal.colorSpace = THREE.NoColorSpace;
+
+
+shelfTextures.albedo.flipY = false;
+shelfTextures.roughness.flipY = false;
+shelfTextures.normal.flipY = false;
 
 
 /* ---------------- GLB TABLE (NEW) ---------------- */
@@ -371,7 +380,7 @@ function createGLBTable(x, z, rotation = 0) {
       }
     });
 
-    table.scale.set(1.2, 1.35, 1.2);
+    table.scale.set(1.55, 1.70, 1.55);
 
     const box = new THREE.Box3().setFromObject(table);
     table.position.y -= box.min.y;
@@ -566,46 +575,56 @@ function createGLBBookshelf(x, z, rotation = 0) {
     (gltf) => {
       const shelf = gltf.scene;
 
+      const TINT = new THREE.Color(0xb98a5a);
+const EMISS = new THREE.Color(0x815738);
+
       shelf.traverse((child) => {
         if (child.isMesh) {
           child.material = new THREE.MeshStandardMaterial({
             map: shelfTextures.albedo,
-            normalMap: shelfTextures.normal,
+
             roughnessMap: shelfTextures.roughness,
             roughness: 1.0,
+
             metalness: 0.0,
-            color: new THREE.Color(0xd9b99b)
+            envMapIntensity: 0.0,
+
+            normalMap: shelfTextures.normal,
+normalScale: new THREE.Vector2(0.12, 0.12),
+
+           
+
+            color: TINT,
+            emissive: EMISS,
+            emissiveIntensity: 0.09
           });
-          child.castShadow = true;
-          child.receiveShadow = true;
+
+          
+          child.castShadow = false;
+          child.receiveShadow = false;
         }
       });
 
-      // Scale 
-      shelf.scale.set(2, 2, 2);
-
       
+      shelf.scale.set(1.93, 3.0, 1.93);
+
+      // Center it
       const box = new THREE.Box3().setFromObject(shelf);
       const center = box.getCenter(new THREE.Vector3());
-
-      
       shelf.position.x += -center.x;
       shelf.position.z += -center.z;
 
-      
+      // Sit on floor
       const box2 = new THREE.Box3().setFromObject(shelf);
       shelf.position.y += -box2.min.y;
 
       group.add(shelf);
 
-      
       addBooksToShelf(group, shelf, {
         rows: 3,
         cols: 8,
-        frontIsMaxZ: true, 
+        frontIsMaxZ: true
       });
-
-      console.log("📚 Books added inside shelf");
     },
     undefined,
     (error) => console.error("❌ Shelf load error:", error)
@@ -668,78 +687,75 @@ function addPendantHanging(counterGroup, lampShade, opts = {}) {
 }
 
 
+
 /* ---------------- CAFÉ COUNTER ---------------- */
 function createCafeCounter() {
   const counterGroup = new THREE.Group();
 
+  
+  const counterW = 9.0;     
+  const counterD = 2.0;
+  const bodyH = 1.2;
+  const topH = 0.1;
+
   const counterBody = new THREE.Mesh(
-    new THREE.BoxGeometry(6, 1.2, 2),
+    new THREE.BoxGeometry(counterW, bodyH, counterD),
     new THREE.MeshStandardMaterial({
       color: 0x1a1a1a,
       roughness: 0.3,
       metalness: 0.4
     })
   );
-  counterBody.position.set(0, 0.6, 0);
+  counterBody.position.set(0, bodyH / 2, 0);
   counterBody.castShadow = true;
   counterBody.receiveShadow = true;
   counterGroup.add(counterBody);
 
   const counterTop = new THREE.Mesh(
-    new THREE.BoxGeometry(6.2, 0.1, 2.2),
+    new THREE.BoxGeometry(counterW + 0.2, topH, counterD + 0.2),
     new THREE.MeshStandardMaterial({
       color: 0x8b6f47,
       roughness: 0.5,
       metalness: 0.2
     })
   );
-  counterTop.position.set(0, 1.25, 0);
+  counterTop.position.set(0, bodyH + topH / 2, 0);
   counterTop.castShadow = true;
   counterTop.receiveShadow = true;
   counterGroup.add(counterTop);
 
-  // // for (let i = 0; i < 3; i++) {
-  // //   const shelf = new THREE.Mesh(
-  // //     new THREE.BoxGeometry(5, 0.1, 0.4),
-  // //     new THREE.MeshStandardMaterial({
-  // //       color: 0xc9a870,
-  // //       roughness: 0.6
-  // //     })
-  // //   );
-  // //   shelf.position.set(0, 2.5 + i * 0.8, -0.8);
-  // //   shelf.castShadow = true;
-  // //   counterGroup.add(shelf);
+  
+  const lampY = 4.2;
+  const lampZ = 0;
 
-    
-  // }
+  const lampXs = [-3.0, 0.0, 3.0]; 
 
-  for (let i = 0; i < 3; i++) {
-  const lampShade = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.3, 0.4, 0.3, 8),
-    new THREE.MeshStandardMaterial({
-      color: 0xff8844,
-      emissive: 0xff6622,
-      emissiveIntensity: 0.5,
-      roughness: 0.4
-    })
-  );
+  lampXs.forEach((lx) => {
+    const lampShade = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.3, 0.4, 0.3, 8),
+      new THREE.MeshStandardMaterial({
+        color: 0xff8844,
+        emissive: 0xff6622,
+        emissiveIntensity: 0.5,
+        roughness: 0.4
+      })
+    );
 
-  lampShade.position.set(-2 + i * 2, 4.2, 0);
-  counterGroup.add(lampShade);
+    lampShade.position.set(lx, lampY, lampZ);
+    counterGroup.add(lampShade);
 
-  // add hanging cord + ceiling cap
-  addPendantHanging(counterGroup, lampShade, { ceilingY: 10 });
+    addPendantHanging(counterGroup, lampShade, { ceilingY: 10 });
 
-  const light = new THREE.PointLight(0xffaa66, 0.8, 8);
-  light.position.set(-2 + i * 2, 4, 0);
-  light.castShadow = true;
-  counterGroup.add(light);
-}
+    const light = new THREE.PointLight(0xffaa66, 0.8, 8);
+    light.position.set(lx, 4, lampZ);
+    light.castShadow = true;
+    counterGroup.add(light);
+  });
 
-
-  counterGroup.position.set(0, 0, 0);
+  counterGroup.position.set(0, 0, -1.0); 
   return counterGroup;
 }
+
 scene.add(createCafeCounter());
 
 
@@ -810,6 +826,7 @@ function addChairToTable(tableGroup, offsetZ, rotationY, color = null) {
 }
 
 
+
 /* ---------------- SEATING: ONE TABLE PER CHAIR ---------------- */
 function createCafeSeatingClustersDispersed() {
   const group = new THREE.Group();
@@ -848,7 +865,28 @@ const clusterCenters = [
   return group;
 }
 
+function addFrontRowChairs() {
+  
+  const barFrontZ = 1.0;
 
+  
+ const zChairs = barFrontZ + 0.4;   
+
+  const yRot = Math.PI;               
+
+ 
+  const spacing = 1.75;
+  const startX = -2.6;
+
+  const colors = [0xff0000, 0x111111, 0xff0000, 0x111111];
+
+  for (let i = 0; i < 4; i++) {
+    const x = startX + i * spacing;
+    scene.add(createGLBChair(x, zChairs, yRot, colors[i]));
+  }
+}
+
+addFrontRowChairs();
 scene.add(createCafeSeatingClustersDispersed());
 
 /* ---------------- NEON SIGN ---------------- */
