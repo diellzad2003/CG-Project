@@ -283,9 +283,10 @@ function createHangingPlanks() {
 
 
   const plankMaterial = new THREE.MeshStandardMaterial({
-    color: 0xf5e0c3,  // light wood
-    roughness: 0.7,
-    metalness: 0.05
+   color: 0xf5e0c3,
+  emissive: 0xffcc88,
+  emissiveIntensity: 0.15,
+  roughness: 0.7
   });
 
 
@@ -318,16 +319,6 @@ function createHangingPlanks() {
         ceilingY - plankLength / 2,                      // hang down from ceiling
         startZ + j * 3 + (Math.random() - 0.5) * 1.0    // jitter Z
       );
-
-
-      plank.castShadow = true;
-      plank.receiveShadow = true;
-
-
-      
-      const light = new THREE.PointLight(0xffddaa, 0.6, 5);
-      light.position.set(plank.position.x, ceilingY + 0.1, plank.position.z);
-      group.add(light);
 
 
       group.add(plank);
@@ -587,7 +578,7 @@ const EMISS = new THREE.Color(0x815738);
             roughness: 1.0,
 
             metalness: 0.0,
-            envMapIntensity: 0.0,
+            envMapIntensity: 0.5,
 
             normalMap: shelfTextures.normal,
 normalScale: new THREE.Vector2(0.12, 0.12),
@@ -689,11 +680,13 @@ function addPendantHanging(counterGroup, lampShade, opts = {}) {
 
 
 /* ---------------- CAFÉ COUNTER ---------------- */
+  const counterLights = [];
 function createCafeCounter() {
   const counterGroup = new THREE.Group();
 
-  
-  const counterW = 9.0;     
+
+
+  const counterW = 14.0;     
   const counterD = 2.0;
   const bodyH = 1.2;
   const topH = 0.1;
@@ -748,7 +741,9 @@ function createCafeCounter() {
 
     const light = new THREE.PointLight(0xffaa66, 0.8, 8);
     light.position.set(lx, 4, lampZ);
-    light.castShadow = true;
+    light.castShadow = false;
+    light.userData.base = 0.8;
+    counterLights.push(light);
     counterGroup.add(light);
   });
 
@@ -756,7 +751,178 @@ function createCafeCounter() {
   return counterGroup;
 }
 
-scene.add(createCafeCounter());
+const counter = createCafeCounter();
+scene.add(counter);
+
+// ================= ADD GLASS DISPLAY ON COUNTER =================
+const glassDisplay = createGlassDisplayCase();
+counter.add(glassDisplay);
+
+// Place it on top of the counter
+const COUNTER_TOP_Y = 1.2 + 0.1; 
+glassDisplay.position.set(
+  12/2 - 1,                       
+  COUNTER_TOP_Y,              
+  -0.2                     
+);
+
+glassDisplay.scale.multiplyScalar(0.85);
+
+
+// ================= GLASS DISPLAY CASE =================
+function createGlassDisplayCase() {
+  const displayCase = new THREE.Group();
+
+  // Base dimensions
+  const width = 3;
+  const height = 2;
+  const depth = 1;
+
+  // Scale it down
+  const scale = 0.7;
+  displayCase.scale.set(scale, scale, scale);
+
+  // Glass material
+  const glassMaterial = new THREE.MeshPhysicalMaterial({
+    transparent: true,
+    opacity: 0.35,
+    roughness: 0.05,
+    metalness: 0,
+    transmission: 0.75,
+    thickness: 0.15,
+    clearcoat: 1,
+    clearcoatRoughness: 0.05
+  });
+
+  // Reusable geometries
+  const frontBackGeo = new THREE.BoxGeometry(width, height, 0.02);
+  const sideGeo = new THREE.BoxGeometry(0.02, height, depth);
+  const topBottomGeo = new THREE.BoxGeometry(width, 0.02, depth);
+
+  // ------------------ Glass Panels ------------------
+  const front = new THREE.Mesh(frontBackGeo, glassMaterial);
+  front.position.set(0, height / 2, depth / 2);
+  displayCase.add(front);
+
+  const back = new THREE.Mesh(frontBackGeo, glassMaterial);
+  back.position.set(0, height / 2, -depth / 2);
+  displayCase.add(back);
+
+  const left = new THREE.Mesh(sideGeo, glassMaterial);
+  left.position.set(-width / 2, height / 2, 0);
+  displayCase.add(left);
+
+  const right = new THREE.Mesh(sideGeo, glassMaterial);
+  right.position.set(width / 2, height / 2, 0);
+  displayCase.add(right);
+
+  const top = new THREE.Mesh(topBottomGeo, glassMaterial);
+  top.position.set(0, height, 0);
+  displayCase.add(top);
+
+  const bottom = new THREE.Mesh(topBottomGeo, glassMaterial);
+  bottom.position.set(0, 0, 0);
+  displayCase.add(bottom);
+
+  // ------------------ Shelves / Dividers ------------------
+  const shelfGeo = new THREE.BoxGeometry(width - 0.1, 0.02, depth - 0.1);
+  const shelfMaterial = new THREE.MeshStandardMaterial({
+    color: 0x8b6f47,
+    roughness: 0.7,
+    metalness: 0.2
+  });
+
+  // Middle shelf
+  const middleShelf = new THREE.Mesh(shelfGeo, shelfMaterial);
+  middleShelf.position.set(0, height * 0.5, 0);
+  displayCase.add(middleShelf);
+
+  // Upper shelf
+  const upperShelf = new THREE.Mesh(shelfGeo, shelfMaterial);
+  upperShelf.position.set(0, height * 0.75, 0);
+  displayCase.add(upperShelf);
+
+  // ------------------ Black Edges ------------------
+function addEdges(mesh) {
+  const geo = new THREE.EdgesGeometry(mesh.geometry);
+  const mat = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
+  const edges = new THREE.LineSegments(geo, mat);
+  edges.position.copy(mesh.position);
+  edges.rotation.copy(mesh.rotation);
+  displayCase.add(edges);
+}
+
+// Add edges for all main panels
+[front, back, left, right, top, bottom, middleShelf, upperShelf].forEach(addEdges);
+
+
+  // ------------------ Donuts ------------------
+  const donutMaterial = new THREE.MeshStandardMaterial({
+    color: 0xffcc66,
+    roughness: 0.4,
+    metalness: 0.1
+  });
+  const donutGeo = new THREE.TorusGeometry(0.15, 0.05, 16, 32);
+
+  function placeDonuts(yHeight) {
+    const positions = [
+      [-0.8, 0], [0, 0], [0.8, 0],
+      [-0.4, 0.4], [0.4, 0.4]
+    ];
+    positions.forEach(pos => {
+      const donut = new THREE.Mesh(donutGeo, donutMaterial);
+      donut.rotation.x = Math.PI / 2; // lay flat
+      donut.position.set(pos[0], yHeight + 0.05, pos[1]);
+      displayCase.add(donut);
+    });
+  }
+
+  placeDonuts(0.05);           // bottom shelf
+  placeDonuts(height * 0.5);   // middle shelf
+  placeDonuts(height * 0.75);  // upper shelf
+
+  // ------------------ Shadows ------------------
+  displayCase.traverse(obj => {
+    if (obj.isMesh) {
+      obj.castShadow = false;
+      obj.receiveShadow = true;
+    }
+  });
+
+  return displayCase;
+}
+
+
+addCoffeeMachine(counter, {
+  x: glassDisplay.position.x - 2.4, 
+  y: COUNTER_TOP_Y,                 
+  z: glassDisplay.position.z,        
+  scale: 2.5                        
+});
+
+
+function addCoffeeMachine(counterGroup, options = {}) {
+  const { x = 0.8, y = 0.15, z = -0.5, scale = 0.5 } = options;
+
+  gltfLoader.load('/models/coffee_machine/coffee_machine.glb', (gltf) => {
+    const machine = gltf.scene;
+
+    machine.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+
+    machine.scale.set(scale, scale, scale);
+    machine.position.set(x, y, z);
+
+  
+    machine.rotation.y = Math.PI / 2; 
+
+    counterGroup.add(machine);
+  });
+}
 
 
 function createGLBChair(x, z, rotation = 0, color = null) {
@@ -866,17 +1032,13 @@ const clusterCenters = [
 }
 
 function addFrontRowChairs() {
-  
-  const barFrontZ = 1.0;
+  const barFrontZ = 0.5; 
+  const zChairs = barFrontZ + 0.3; 
 
-  
- const zChairs = barFrontZ + 0.4;   
+  const yRot = Math.PI;
 
-  const yRot = Math.PI;               
-
- 
-  const spacing = 1.75;
-  const startX = -2.6;
+  const spacing = 2.5; 
+  const startX = -3.75; 
 
   const colors = [0xff0000, 0x111111, 0xff0000, 0x111111];
 
@@ -887,32 +1049,10 @@ function addFrontRowChairs() {
 }
 
 addFrontRowChairs();
+
 scene.add(createCafeSeatingClustersDispersed());
 
-/* ---------------- NEON SIGN ---------------- */
-// function createNeonSign() {
-//   const neonGroup = new THREE.Group();
 
-//   // //const panel = new THREE.Mesh(
-//   //   new THREE.BoxGeometry(4, 1.5, 0.1),
-//   //   new THREE.MeshStandardMaterial({
-//   //     color: 0xff0000,
-//   //     emissive: 0xff0000,
-//   //     emissiveIntensity: 1.5,
-//   //     roughness: 0.2
-//   //   })
-//   // );
-//   // panel.position.set(0, 0, 0);
-//   // neonGroup.add(panel);
-
-//   const glowLight = new THREE.PointLight(0xff0000, 2, 10);
-//   glowLight.position.set(0, 0, 0.5);
-//   neonGroup.add(glowLight);
-
-//   neonGroup.position.set(0, 3, -1.5);
-//   return neonGroup;
-// }
-// scene.add(createNeonSign());
 
 /* ---------------- GLASS DISPLAY CASE ---------------- */
 function createDisplayCase(x, z) {
@@ -1431,24 +1571,40 @@ const hangingPlanksGroup = createHangingPlanks();
 scene.add(hangingPlanksGroup);
 
 
+const clock = new THREE.Clock();
+
 function animate() {
   requestAnimationFrame(animate);
+
   moveCamera();
 
-  const time = Date.now() * 0.001;
+  const t = clock.getElapsedTime();
 
   // Hanging plank sway
   hangingPlanksGroup.children.forEach((plank, index) => {
     if (plank.isMesh) {
       const swayAmplitude = 0.01;
       const swaySpeed = 0.2 + index * 0.05;
-      plank.rotation.z = Math.sin(time * swaySpeed) * swayAmplitude;
+      plank.rotation.z = Math.sin(t * swaySpeed) * swayAmplitude;
     }
   });
 
+  //  Counter light flicker
+  counterLights.forEach((light, i) => {
+    const wave = Math.sin(t * 5 + i * 10) * 0.12;
+    const jitter = (Math.random() - 0.5) * 0.05;
 
+    light.intensity = Math.max(
+      0,
+      light.userData.base + wave + jitter
+    );
+  });
+
+  controls.update();
   renderer.render(scene, camera);
 }
+
+
 
 animate();
 document.getElementById('loading').style.display = 'none';
