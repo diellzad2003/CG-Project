@@ -10,9 +10,25 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x1a1a1a);
 scene.fog = new THREE.Fog(0x1a1a1a, 25, 60);
 
-/* ---------------- CAMERA ---------------- */
+
 const camera = new THREE.PerspectiveCamera(100, window.innerWidth / window.innerHeight, 0.1, 200);
 camera.position.set(0, 3, 12);
+
+// ==================== BACKGROUND MUSIC ====================
+const listener = new THREE.AudioListener();
+camera.add(listener);
+
+const bgMusic = new THREE.Audio(listener);
+const audioLoader = new THREE.AudioLoader();
+audioLoader.load('/audio/Morning Café Jazz.mp3', (buffer) => {
+  bgMusic.setBuffer(buffer);
+  bgMusic.setLoop(true);
+  bgMusic.setVolume(0.35);
+});
+
+window.addEventListener('click', () => {
+  if (!bgMusic.isPlaying) bgMusic.play();
+}, { once: true });
 
 /* ---------------- RENDERER ---------------- */
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -341,7 +357,7 @@ const shelfTextures = {
   normal: texLoader.load('/models/shelves/shelves_model/texture/SchoolBagShelves_normals(opengl).png')
 };
 
-// ✅ correct color spacesshelfTextures.albedo.colorSpace = THREE.SRGBColorSpace;
+
 shelfTextures.roughness.colorSpace = THREE.NoColorSpace;
 shelfTextures.normal.colorSpace = THREE.NoColorSpace;
 
@@ -1231,10 +1247,7 @@ function addGlassesToBackBarShelf(group, cfg = {}) {
     rows = 3,
     yMid = 3.45,
 
-    // where inside depth to place them
     zInside = -0.05,
-
-    // padding from compartment bottom
     floorPad = 0.10,
   } = cfg;
 
@@ -1261,23 +1274,30 @@ function addGlassesToBackBarShelf(group, cfg = {}) {
   bottlesGroup.name = "BackBarGlasses";
   group.add(bottlesGroup);
 
+  
+  const glassInfo = Array.from({ length: rows }, () =>
+    Array.from({ length: cols }, () => ({ n: 0, sumX: 0, sumZ: 0 }))
+  );
+
   const innerBottomY = yMid - innerH / 2;
 
   for (let r = 0; r < rows; r++) {
-    // bottom of THIS compartment
     const compartmentBottomY = innerBottomY + r * cellH;
-    // max height allowed in this compartment (so it can’t cross top)
     const maxH = cellH - (floorPad * 2);
 
     for (let c = 0; c < cols; c++) {
       const xCenter = (-innerW / 2) + (c + 0.5) * cellW;
 
+      
       const count = Math.random() < 0.65 ? 1 : 2;
 
       for (let k = 0; k < count; k++) {
-        // Clamp bottle height so it always fits
         const h = Math.min(0.55, Math.max(0.25, 0.32 + Math.random() * 0.45), maxH);
         const radius = 0.07 + Math.random() * 0.03;
+
+        // offsets inside the cell
+        const dx = (Math.random() - 0.5) * (cellW * 0.35);
+        const dz = (Math.random() - 0.5) * 0.08;
 
         const bottle = new THREE.Mesh(
           new THREE.CylinderGeometry(radius, radius, h, 16),
@@ -1285,19 +1305,152 @@ function addGlassesToBackBarShelf(group, cfg = {}) {
         );
 
         bottle.position.set(
-          xCenter + (Math.random() - 0.5) * (cellW * 0.35),
+          xCenter + dx,
           compartmentBottomY + floorPad + h / 2,
-          zInside + (Math.random() - 0.5) * 0.08
+          zInside + dz
         );
 
         bottle.rotation.y = (Math.random() - 0.5) * 0.6;
         bottle.castShadow = true;
         bottle.receiveShadow = true;
-
         bottlesGroup.add(bottle);
+
+        
+        glassInfo[r][c].n += 1;
+        glassInfo[r][c].sumX += dx;
+        glassInfo[r][c].sumZ += dz;
       }
     }
   }
+
+  
+  group.userData.backBarGlassInfo = glassInfo;
+}
+
+const MUG_PATH = '/models/mugs/Mugs.glb';
+
+let mugTemplate = null;
+let mugFitScale = 1;
+
+function loadMugModel(cb, targetHeight = 0.40) {
+  if (mugTemplate) return cb(mugTemplate, mugFitScale);
+
+  gltfLoader.load(
+    MUG_PATH,
+    (gltf) => {
+      mugTemplate = gltf.scene;
+
+      
+      const box = new THREE.Box3().setFromObject(mugTemplate);
+      const size = box.getSize(new THREE.Vector3());
+      const h = Math.max(0.0001, size.y);
+
+      
+      mugFitScale = targetHeight / h;
+
+      mugTemplate.traverse((o) => {
+        if (o.isMesh) {
+          o.castShadow = true;
+          o.receiveShadow = true;
+        }
+      });
+
+      cb(mugTemplate, mugFitScale);
+    },
+    undefined,
+    (err) => console.error('❌ Mug load error:', err)
+  );
+}
+
+function addMugsToBackBarShelf(group, cfg = {}) {
+  const {
+    W = 12.8,
+    H = 5.4,
+    inset = 0.55,
+    cols = 5,
+    rows = 3,
+    yMid = 3.45,
+
+   
+    rowsToUse = [0, 1, 2],     
+
+    maxGlassAllowed = 1,      
+
+    // placement / collision
+    zInside = -0.34,           // deeper than glasses
+    targetHeight = 0.40,
+    floorPad = 0.10,
+    xAwayFrac = 0.22,          
+
+    // density
+    chancePerCell = 0.65,      // chance in each eligible cell
+    maxMugsTotal = 10,        
+  } = cfg;
+
+  const old = group.getObjectByName("BackBarMugs");
+  if (old) group.remove(old);
+
+  const mugsGroup = new THREE.Group();
+  mugsGroup.name = "BackBarMugs";
+  group.add(mugsGroup);
+
+  const info = group.userData.backBarGlassInfo;
+  if (!info) {
+    console.warn("⚠️ No glass info found. Store glass info in addGlassesToBackBarShelf first.");
+    return;
+  }
+
+  const innerW = W - inset * 2;
+  const innerH = H - inset * 2;
+  const cellW = innerW / cols;
+  const cellH = innerH / rows;
+
+  const innerBottomY = yMid - innerH / 2;
+
+  // collect eligible slots across chosen rows
+  const slots = [];
+  rowsToUse.forEach((r) => {
+    if (!info[r]) return;
+
+    const compartmentBottomY = innerBottomY + r * cellH;
+
+    for (let c = 0; c < cols; c++) {
+      const cell = info[r][c];
+      const n = cell ? cell.n : 0;
+
+      if (n <= maxGlassAllowed && Math.random() < chancePerCell) {
+        slots.push({ r, c, compartmentBottomY, cell, n });
+      }
+    }
+  });
+
+  // cap amount
+  while (slots.length > maxMugsTotal) slots.splice(Math.floor(Math.random() * slots.length), 1);
+
+  loadMugModel((base, fitScale) => {
+    slots.forEach(({ c, compartmentBottomY, cell, n }) => {
+      const xCenter = (-innerW / 2) + (c + 0.5) * cellW;
+
+      // push away from glass if exactly 1
+      const avgDx = (cell && n > 0) ? (cell.sumX / n) : 0;
+      const awaySign = n === 1 ? (avgDx >= 0 ? -1 : 1) : 0;
+
+      const mug = base.clone(true);
+      mug.scale.setScalar(fitScale);
+
+      const b = new THREE.Box3().setFromObject(mug);
+      const bottom = b.min.y;
+
+      mug.position.set(
+        xCenter + awaySign * (cellW * xAwayFrac),
+        (compartmentBottomY + floorPad) - bottom,
+        zInside
+      );
+
+      mug.rotation.y = (Math.random() - 0.5) * 0.25;
+      mugsGroup.add(mug);
+    });
+  }, targetHeight);
 }
 
 function createBackBarShelf() {
@@ -1419,7 +1572,13 @@ function createBackBarShelf() {
   const warm2 = warm.clone();
   warm2.position.x = 3.8;
   group.add(warm2);
-  addGlassesToBackBarShelf(group);
+addGlassesToBackBarShelf(group);
+addMugsToBackBarShelf(group, {
+  rowsToUse: [0, 1, 2],     
+  maxGlassAllowed: 1,
+  chancePerCell: 0.8,       
+  maxMugsTotal: 12
+});
 
   return group;
 }
