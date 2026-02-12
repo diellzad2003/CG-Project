@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
+
 import { booksData } from './bookData.js';
 
 
@@ -31,10 +32,14 @@ window.addEventListener('click', () => {
 }, { once: true });
 
 /* ---------------- RENDERER ---------------- */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ 
+  antialias: true,
+  powerPreference: "high-performance", 
+  stencil: false, 
+});
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.autoUpdate = true;
+renderer.shadowMap.autoUpdate = false;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -46,6 +51,8 @@ const texLoader = new THREE.TextureLoader();
 
 /* ---------------- GLTF LOADER ---------------- */
 const gltfLoader = new GLTFLoader();
+
+
 
 
 /* ---------------- ENV MAP (HDR) ---------------- */
@@ -78,8 +85,8 @@ new RGBELoader()
     });
 
     this.mesh = new THREE.Mesh(geometry, material);
-    this.mesh.castShadow = true;
-    this.mesh.receiveShadow = true;
+    this.mesh.castShadow = false;
+    this.mesh.receiveShadow = false;
 
     this.mesh.userData = {
       clickable: true,
@@ -182,7 +189,7 @@ const leftWall = new THREE.Mesh(
 );
 leftWall.position.set(-11, 5, 6); // left side
 leftWall.rotation.y = Math.PI / 2; // rotate to face inward
-leftWall.receiveShadow = true;
+leftWall.receiveShadow = false;
 scene.add(leftWall);
 
 /* ---------------- RIGHT WALL ---------------- */
@@ -199,7 +206,7 @@ const rightWall = new THREE.Mesh(
 );
 rightWall.position.set(11, 5, 6); // right side
 rightWall.rotation.y = -Math.PI / 2; // rotate to face inward
-rightWall.receiveShadow = true;
+rightWall.receiveShadow = false;
 scene.add(rightWall);
 
 const ceilingWall = new THREE.Mesh(
@@ -377,7 +384,7 @@ function createGLBTable(x, z, rotation = 0) {
 
     table.traverse((child) => {
       if (child.isMesh) {
-        child.castShadow = true;
+        child.castShadow = false;
         child.receiveShadow = true;
         child.material = new THREE.MeshStandardMaterial({
           color: 0x050505,
@@ -939,6 +946,31 @@ function addCoffeeMachine(counterGroup, options = {}) {
     counterGroup.add(machine);
   });
 }
+
+
+function addCashier(counterGroup) {
+  gltfLoader.load('/models/cashier/cashier.glb', (gltf) => {
+    const model = gltf.scene;
+
+    // Scale, position, rotation
+    model.scale.set(1.8, 1.8, 1.8);
+    model.position.set(-1.2, 0, -2);
+    model.rotation.set(0, 0, 0);
+
+    // Shadows
+    model.traverse(child => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = false;
+      }
+    });
+
+    counterGroup.add(model);
+  });
+}
+
+addCashier(counter);
+
 
 
 function createGLBChair(x, z, rotation = 0, color = null) {
@@ -1734,16 +1766,15 @@ const clock = new THREE.Clock();
 
 function animate() {
   requestAnimationFrame(animate);
-
+  
   moveCamera();
-
+  
   const t = clock.getElapsedTime();
-
   // Hanging plank sway
   hangingPlanksGroup.children.forEach((plank, index) => {
     if (plank.isMesh) {
-      const swayAmplitude = 0.01;
-      const swaySpeed = 0.2 + index * 0.05;
+      const swayAmplitude = 0.02;
+      const swaySpeed = 0.2 + index * 0.08;
       plank.rotation.z = Math.sin(t * swaySpeed) * swayAmplitude;
     }
   });
@@ -1760,6 +1791,8 @@ function animate() {
   });
 
   controls.update();
+  
+
   renderer.render(scene, camera);
 }
 
