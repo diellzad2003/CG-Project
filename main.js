@@ -103,8 +103,12 @@ scene.add(ambientLight);
 
 const ceilingLight = new THREE.PointLight(0xffcc88, 2.5, 25);
 ceilingLight.position.set(0, 8, 0);
-ceilingLight.castShadow = false;
-scene.add(ceilingLight);
+
+ceilingLight.castShadow = true;
+ceilingLight.shadow.mapSize.set(1024, 1024);
+ceilingLight.shadow.radius = 4;
+ceilingLight.shadow.bias = -0.001;
+
 
 const spotlight1 = new THREE.SpotLight(0xffffff, 3, 30, Math.PI / 6, 0.3);
 spotlight1.position.set(-8, 8, -5);
@@ -123,6 +127,10 @@ scene.add(spotlight2.target);
 const cafeLight = new THREE.PointLight(0xffaa66, 2.0, 20);
 cafeLight.position.set(0, 5, 0);
 cafeLight.castShadow = true;
+cafeLight.shadow.mapSize.set(1024, 1024);
+cafeLight.shadow.radius = 3;
+cafeLight.shadow.bias = -0.002;
+
 scene.add(cafeLight);
 
 const fillLight = new THREE.PointLight(0xffffff, 1.2, 20);
