@@ -39,7 +39,7 @@ const renderer = new THREE.WebGLRenderer({
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.autoUpdate = false;
+renderer.shadowMap.autoUpdate = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -92,22 +92,30 @@ new RGBELoader()
       clickable: true,
       title: title,
       author: author,
-      price: price
+      price: price,
+      color:color
     };
   }
 }
 
 /* ---------------- LIGHTING ---------------- */
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+
 scene.add(ambientLight);
 
-const ceilingLight = new THREE.PointLight(0xffcc88, 2.5, 25);
+const ceilingLight = new THREE.PointLight(0xffaa66, 2.5, 25);
 ceilingLight.position.set(0, 8, 0);
 
 ceilingLight.castShadow = true;
 ceilingLight.shadow.mapSize.set(1024, 1024);
 ceilingLight.shadow.radius = 4;
 ceilingLight.shadow.bias = -0.001;
+ceilingLight.intensity = 4.0;
+ceilingLight.distance = 35;
+
+
+scene.add(ceilingLight);
+
 
 
 const spotlight1 = new THREE.SpotLight(0xffffff, 3, 30, Math.PI / 6, 0.3);
@@ -361,7 +369,7 @@ function createHangingPlanks() {
 }
 
 
-scene.add(createHangingPlanks());
+
 
 
 
